@@ -95,7 +95,7 @@ const Candidates = () => {
               {candidates.map((c, i) => (
                 <tr 
                   key={i} 
-                  onClick={() => navigate('/results')}
+                  onClick={() => navigate('/results/detail')}
                   className="hover:bg-primary/5 transition-all duration-300 cursor-pointer group"
                 >
                   <td className="px-10 py-8">
@@ -180,10 +180,10 @@ const Candidates = () => {
                 Her <span className="font-bold text-tertiary">Scale-first mindset</span> perfectly offsets current team gaps.
               </p>
               <div className="flex gap-6">
-                <Link to="/results" className="px-8 py-4 bg-tertiary text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-tertiary/30 hover:scale-105 active:scale-95 transition-all">
+                <Link to="/results/detail" className="px-8 py-4 bg-tertiary text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-tertiary/30 hover:scale-105 active:scale-95 transition-all">
                   Read Full Analysis
                 </Link>
-                <Link to="/results" className="px-8 py-4 bg-white/40 backdrop-blur-md text-tertiary rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-white/60 transition-all">
+                <Link to="/results/detail" className="px-8 py-4 bg-white/40 backdrop-blur-md text-tertiary rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-white/60 transition-all">
                   View Source Log
                 </Link>
               </div>

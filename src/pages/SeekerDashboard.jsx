@@ -1,18 +1,22 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import SeekerLayout from '../components/SeekerLayout';
 
 const SeekerDashboard = () => {
+  const navigate = useNavigate();
   const applications = [
     {
+      id: '1',
       title: 'Sales Manager',
       team: 'Global Sales Team',
       company: 'Kuantum',
-      status: 'Invited',
+      status: 'Approved',
       date: 'Oct 24, 2023',
       icon: 'corporate_fare',
       primary: true
     },
     {
+      id: '2',
       title: 'Technical Product Lead',
       team: 'Logistics Core',
       company: 'Velocity AI',
@@ -21,6 +25,7 @@ const SeekerDashboard = () => {
       icon: 'blur_on'
     },
     {
+      id: '3',
       title: 'Customer Success Dir.',
       team: 'Enterprise Solutions',
       company: 'Nexo Systems',
@@ -36,7 +41,7 @@ const SeekerDashboard = () => {
         {/* Page Header */}
         <header className="mb-10">
           <h1 className="text-3xl font-extrabold tracking-tight text-on-surface mb-2">My Applications</h1>
-          <p className="text-on-surface-variant text-base">Welcome back, <span className="font-semibold text-on-surface">Alex Rivers</span>. Tracking your high-precision career matches.</p>
+          <p className="text-on-surface-variant text-base">Welcome back, <span className="font-semibold text-on-surface">Andi Pratama</span>. Tracking your high-precision career matches.</p>
         </header>
 
         {/* Application Table */}
@@ -55,8 +60,11 @@ const SeekerDashboard = () => {
                 {applications.map((app, i) => (
                   <tr key={i} className="group transition-colors hover:bg-surface-container-low/30">
                     <td className="px-8 py-6">
-                      <div className="flex flex-col">
-                        <span className="text-base font-bold text-on-surface">{app.title}</span>
+                      <div 
+                        onClick={() => navigate(`/seeker/job/${app.id}`)}
+                        className="flex flex-col cursor-pointer group/title"
+                      >
+                        <span className="text-base font-bold text-on-surface group-hover/title:text-primary transition-colors underline-offset-4 group-hover/title:underline">{app.title}</span>
                         <span className="text-xs text-on-surface-variant font-medium opacity-70">{app.team}</span>
                       </div>
                     </td>
@@ -69,12 +77,19 @@ const SeekerDashboard = () => {
                       </div>
                     </td>
                     <td className="px-8 py-6">
-                      <span className={`inline-flex items-center px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${app.status === 'Invited' ? 'bg-secondary-container text-on-secondary-container' : 'bg-surface-container-highest text-on-surface-variant'}`}>
+                      <span className={`inline-flex items-center px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${app.status === 'Invited' ? 'bg-secondary-container text-on-secondary-container' : app.status === 'Approved' ? 'bg-primary/10 text-primary' : 'bg-surface-container-highest text-on-surface-variant'}`}>
                         {app.status}
                       </span>
                     </td>
                     <td className="px-8 py-6 text-right">
-                      {app.primary ? (
+                      {app.status === 'Approved' ? (
+                        <button 
+                          onClick={() => navigate(`/seeker/results/${app.id}`)}
+                          className="px-6 py-2.5 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+                        >
+                          View Feedback
+                        </button>
+                      ) : app.status === 'Invited' ? (
                         <button className="px-6 py-2.5 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all">
                           Start Interview
                         </button>
@@ -104,8 +119,11 @@ const SeekerDashboard = () => {
             </p>
           </div>
           <div className="z-10">
-            <button className="px-8 py-4 bg-on-tertiary-fixed text-white rounded-2xl text-xs font-black uppercase tracking-[0.2em] shadow-2xl shadow-black/10 hover:opacity-90 transition-all">
-              Review Insight
+            <button 
+              onClick={() => navigate('/seeker/job/1')}
+              className="px-8 py-4 bg-on-tertiary-fixed text-white rounded-2xl text-xs font-black uppercase tracking-[0.2em] shadow-2xl shadow-black/10 hover:opacity-90 transition-all"
+            >
+              Review Role Details
             </button>
           </div>
         </div>

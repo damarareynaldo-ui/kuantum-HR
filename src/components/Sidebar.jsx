@@ -9,7 +9,7 @@ const Sidebar = () => {
     { label: 'Invite', icon: 'person_add', path: '/invite' },
     { label: 'Comparison', icon: 'insights', path: '/comparison' },
     { label: 'AI Interview', icon: 'event_available', path: '/interviews' },
-    { label: 'Results', icon: 'analytics', path: '/results' },
+    { label: 'Interview Results', icon: 'fact_check', path: '/results' },
     { label: 'Settings', icon: 'settings', path: '/settings' },
   ];
 

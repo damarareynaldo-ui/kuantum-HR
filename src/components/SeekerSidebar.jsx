@@ -5,6 +5,7 @@ const SeekerSidebar = () => {
   const navItems = [
     { label: 'Marketplace', icon: 'explore', path: '/seeker/marketplace' },
     { label: 'My Applications', icon: 'dashboard_customize', path: '/seeker/dashboard' },
+    { label: 'Interview Schedule', icon: 'calendar_today', path: '/seeker/schedule' },
     { label: 'Match Profile', icon: 'account_circle', path: '/seeker/profile' },
     { label: 'Settings', icon: 'settings', path: '/seeker/settings' },
   ];
@@ -37,7 +38,7 @@ const SeekerSidebar = () => {
         ))}
       </nav>
       <div className="mt-8 p-6 bg-surface-container-low rounded-[2rem] border border-outline-variant/10">
-        <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-4">Alex Rivers</p>
+        <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-4">Andi Pratama</p>
         <button className="w-full signature-gradient text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 active:scale-95 transition-all">
           Upload CV
         </button>

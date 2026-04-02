@@ -134,9 +134,12 @@ const JobManagement = () => {
                       <p className="text-lg font-black text-primary leading-none">{job.precision}</p>
                     </div>
                     <div className="flex items-center gap-3 pl-6 border-l border-outline-variant/15 font-sans">
-                      <button className="px-6 py-2.5 bg-surface-container-high rounded-xl text-[10px] font-black uppercase tracking-widest text-on-surface hover:bg-surface-dim transition-all active:scale-95">
+                      <Link 
+                        to={`/jobs/${job.id}`}
+                        className="px-6 py-2.5 bg-surface-container-high rounded-xl text-[10px] font-black uppercase tracking-widest text-on-surface hover:bg-surface-dim transition-all active:scale-95 text-center"
+                      >
                         Manage
-                      </button>
+                      </Link>
                       <Link 
                         to="/interviews" 
                         state={{ jobTitle: job.title }}

@@ -6,9 +6,9 @@ const TopNav = () => {
   const isSeeker = location.pathname.startsWith('/seeker');
 
   const user = isSeeker ? {
-    name: 'Alex Rivers',
-    role: 'Product Designer',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400'
+    name: 'Andi Pratama',
+    role: 'Sales Manager',
+    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAwcHnfmPQ90Kg10ElyCe0zBiW3GLtAJ4lGvXa9lnasOmSWyKc0JG-mHZUrB8wnCRqECfGdX_SurEAK2F6d7-U9GsX3DrPQEwf8uxZ_pyXJGGCSdpJdvsD8VW1WGZXBNpDXvSkr9DdELAjpVpaJfHRt7S9GF4Q4fOQSR8M6qW_3qaOhpUHZV5cXJJnunKdtVTK1Zg_JyuDDJyT9GET2EOG_wFjgoQhWSm7zuHLV7CcFQo7uavxPRGYr95mCwf7jb2IHnWT80Ml2Cpz4'
   } : {
     name: 'Sarah Morrison',
     role: 'HR Director',

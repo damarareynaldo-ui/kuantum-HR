@@ -44,7 +44,7 @@ const Comparison = () => {
                   Elena Costa dominates in Problem Solving (9.8).
                 </p>
              </div>
-             <Link to="/results" className="text-[10px] font-black uppercase tracking-widest text-tertiary flex items-center gap-2 hover:underline group-hover:gap-4 transition-all">
+             <Link to="/results/detail" className="text-[10px] font-black uppercase tracking-widest text-tertiary flex items-center gap-2 hover:underline group-hover:gap-4 transition-all">
                View Full Matrix Insights <span className="material-symbols-outlined text-sm">arrow_forward</span>
              </Link>
           </div>
@@ -67,7 +67,7 @@ const Comparison = () => {
                 {finalists.map((f, i) => (
                   <tr 
                     key={i} 
-                    onClick={() => navigate('/results')}
+                    onClick={() => navigate('/results/detail')}
                     className={`group transition-all duration-300 cursor-pointer ${f.top ? 'bg-primary/5 hover:bg-primary/10' : 'hover:bg-white'}`}
                   >
                     <td className="px-10 py-8">

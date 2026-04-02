@@ -9,14 +9,19 @@ import Invite from './pages/Invite';
 import Comparison from './pages/Comparison';
 import CreateInterview from './pages/CreateInterview';
 import InterviewResults from './pages/InterviewResults';
+import InterviewResultsList from './pages/InterviewResultsList';
 import Onboarding from './pages/Onboarding';
 import JobMarketplace from './pages/JobMarketplace';
 import SeekerDashboard from './pages/SeekerDashboard';
-import JobDetail from './pages/JobDetail';
-import ApplicationForm from './pages/ApplicationForm';
 import SeekerOnboarding from './pages/SeekerOnboarding';
 import SeekerProfile from './pages/SeekerProfile';
+import SeekerInterviewResult from './pages/SeekerInterviewResult';
+import SeekerInterviewSchedule from './pages/SeekerInterviewSchedule';
+import SeekerInterviewPreparation from './pages/SeekerInterviewPreparation';
+import SeekerJobApplication from './pages/SeekerJobApplication';
+import SeekerJobDetail from './pages/SeekerJobDetail';
 import JobManagement from './pages/JobManagement';
+import JobApplicantsDetail from './pages/JobApplicantsDetail';
 import CreateAIInterview from './pages/CreateAIInterview';
 import SeekerLayout from './components/SeekerLayout';
 
@@ -36,21 +41,26 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/candidates" element={<Candidates />} />
         <Route path="/jobs" element={<JobManagement />} />
+        <Route path="/jobs/:id" element={<JobApplicantsDetail />} />
         <Route path="/jobs/new" element={<CreateJob />} />
         <Route path="/invite" element={<Invite />} />
         <Route path="/comparison" element={<Comparison />} />
         <Route path="/interviews" element={<CreateInterview />} />
         <Route path="/interviews/agent" element={<CreateAIInterview />} />
-        <Route path="/results" element={<InterviewResults />} />
+        <Route path="/results" element={<InterviewResultsList />} />
+        <Route path="/results/detail" element={<InterviewResults />} />
         <Route path="/settings" element={<Settings />} />
 
         {/* Seeker Routes */}
         <Route path="/seeker/onboarding" element={<SeekerOnboarding />} />
         <Route path="/seeker/dashboard" element={<SeekerDashboard />} />
         <Route path="/seeker/marketplace" element={<JobMarketplace />} />
-        <Route path="/seeker/job/:id" element={<JobDetail />} />
-        <Route path="/seeker/apply/:id" element={<ApplicationForm />} />
+        <Route path="/seeker/job/:id" element={<SeekerJobDetail />} />
+        <Route path="/seeker/apply/:id" element={<SeekerJobApplication />} />
         <Route path="/seeker/profile" element={<SeekerProfile />} />
+        <Route path="/seeker/results/:id" element={<SeekerInterviewResult />} />
+        <Route path="/seeker/schedule" element={<SeekerInterviewSchedule />} />
+        <Route path="/seeker/interview/prepare/:id" element={<SeekerInterviewPreparation />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
