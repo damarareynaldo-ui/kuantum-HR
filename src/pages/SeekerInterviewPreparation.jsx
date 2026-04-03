@@ -1,10 +1,108 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import SeekerLayout from '../components/SeekerLayout';
+import { fetchPublicJob } from '../lib/publicJobsApi.js';
+import { getActiveSessionForApplication, getMyApplicationById } from '../lib/seekerApi';
 
 const SeekerInterviewPreparation = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const [application, setApplication] = React.useState(null);
+  const [companyName, setCompanyName] = React.useState('');
+  const [loaded, setLoaded] = React.useState(false);
+  /** Selesai memanggil GET active-session saat detail belum punya sessionId */
+  const [inviteCheckDone, setInviteCheckDone] = React.useState(false);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const payload = await getMyApplicationById(String(id));
+        if (!cancelled) setApplication(payload);
+      } catch {
+        if (!cancelled) setApplication(null);
+      } finally {
+        if (!cancelled) setLoaded(true);
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const jid = application?.jobId;
+    if (!jid) {
+      setCompanyName('');
+      return undefined;
+    }
+    (async () => {
+      try {
+        const j = await fetchPublicJob(String(jid));
+        if (!cancelled) setCompanyName(j?.company_name || '');
+      } catch {
+        if (!cancelled) setCompanyName('');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [application?.jobId]);
+
+  React.useEffect(() => {
+    if (!loaded || !application?.id) return;
+    if (application.sessionId) {
+      setInviteCheckDone(true);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await getActiveSessionForApplication(String(application.id));
+        if (cancelled) return;
+        if (r?.active && r.sessionId) {
+          setApplication((prev) => ({
+            ...prev,
+            sessionId: r.sessionId,
+            status: r.status,
+            interviewUrl: r.interviewUrl,
+            externalInterviewUrl: r.externalInterviewUrl,
+            accessCode: r.accessCode,
+          }));
+        }
+      } catch {
+        /* tetap tampilkan UI belum undangan */
+      } finally {
+        if (!cancelled) setInviteCheckDone(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loaded, application?.id, application?.sessionId]);
+
+  React.useEffect(() => {
+    if (loaded && !application) setInviteCheckDone(true);
+  }, [loaded, application]);
+
+  function beginSession() {
+    if (!application?.sessionId) return;
+    const fromApi = application.externalInterviewUrl?.trim();
+    const base =
+      (import.meta.env.VITE_EXTERNAL_INTERVIEW_BASE_URL || 'https://interview.ai').replace(
+        /\/$/,
+        '',
+      );
+    const codeForPartner = application.accessCode?.id || application.sessionId;
+    let external = fromApi;
+    if (!external) {
+      const sep = base.includes('?') ? '&' : '?';
+      external = `${base}${sep}accesCode=${encodeURIComponent(codeForPartner)}`;
+    }
+    window.location.href = external;
+  }
 
   const technicalSpecs = [
     { label: 'Stable fiber/broadband connection', icon: 'check_circle' },
@@ -19,11 +117,76 @@ const SeekerInterviewPreparation = () => {
     { label: 'Complete the session at your own convenience', icon: 'schedule' }
   ];
 
+  const jobTitle = application?.job?.title || 'this role';
+  const companyLine = companyName;
+  const hasSession = Boolean(application?.sessionId);
+
   const preparationSteps = [
-    { title: 'Experience', description: 'Prepare 3 STAR-method examples of exceeding quarterly revenue targets in a B2B environment.', color: 'primary' },
-    { title: 'Strategy', description: 'Be ready to discuss your framework for coaching underperforming account executives.', color: 'primary' },
-    { title: 'Knowledge', description: "Review Stark Global's latest annual report on SaaS expansion in the EMEA market.", color: 'primary' }
+    {
+      title: 'Role context',
+      description: `Review the job description and responsibilities for ${jobTitle}${companyLine ? ` at ${companyLine}` : ''}. Be ready to connect your experience to what the team is hiring for.`,
+      color: 'primary',
+    },
+    {
+      title: 'Stories',
+      description: 'Prepare a few concise examples (situation, action, result) that show impact relevant to the role.',
+      color: 'primary',
+    },
+    {
+      title: 'Logistics',
+      description: 'Allow enough uninterrupted time, test your camera and microphone, and keep identification nearby if requested.',
+      color: 'primary',
+    },
   ];
+
+  if (loaded && !application) {
+    return (
+      <SeekerLayout>
+        <div className="max-w-lg mx-auto py-20 px-6 text-center space-y-6">
+          <h1 className="text-xl font-black text-on-surface">Lamaran tidak ditemukan</h1>
+          <button
+            type="button"
+            onClick={() => navigate('/seeker/dashboard')}
+            className="px-8 py-4 rounded-2xl bg-primary text-white font-black text-xs uppercase tracking-widest shadow-lg"
+          >
+            Kembali ke dashboard
+          </button>
+        </div>
+      </SeekerLayout>
+    );
+  }
+
+  if (loaded && application && !hasSession && !inviteCheckDone) {
+    return (
+      <SeekerLayout>
+        <div className="max-w-lg mx-auto py-24 px-6 text-center space-y-4">
+          <span className="material-symbols-outlined text-5xl text-primary animate-pulse">hourglass_empty</span>
+          <p className="text-sm font-bold text-on-surface-variant">Memeriksa undangan wawancara…</p>
+        </div>
+      </SeekerLayout>
+    );
+  }
+
+  if (loaded && application && !hasSession && inviteCheckDone) {
+    return (
+      <SeekerLayout>
+        <div className="max-w-lg mx-auto py-20 px-6 text-center space-y-6">
+          <span className="material-symbols-outlined text-6xl text-amber-600">hourglass_empty</span>
+          <h1 className="text-2xl font-black text-on-surface">Belum ada undangan wawancara</h1>
+          <p className="text-on-surface-variant font-medium leading-relaxed">
+            Recruiter belum membuat sesi wawancara AI untuk lamaran ini. Setelah mereka mengirim link dan kode akses, status Anda akan berubah dan halaman ini akan aktif.
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate('/seeker/dashboard')}
+            className="px-8 py-4 rounded-2xl bg-primary text-white font-black text-xs uppercase tracking-widest shadow-lg"
+          >
+            Kembali ke dashboard
+          </button>
+        </div>
+      </SeekerLayout>
+    );
+  }
 
   return (
     <SeekerLayout>
@@ -37,11 +200,16 @@ const SeekerInterviewPreparation = () => {
                 Active Preparation
               </div>
               <h1 className="text-6xl font-black tracking-tight text-on-surface leading-[1.1]">
-                Sales Manager <br />
+                {jobTitle} <br />
                 <span className="text-on-surface-variant/40 font-light italic">Interview Briefing</span>
               </h1>
               <p className="text-xl text-on-surface-variant max-w-3xl leading-relaxed font-medium">
-                Welcome to the precision preparation room. You are about to engage in a <span className="text-on-surface font-black underline decoration-4 decoration-primary/20 transition-all">self-paced AI-curated evaluation</span> for the Sales Manager position at Stark Global Solutions.
+                You are about to start a{' '}
+                <span className="text-on-surface font-black underline decoration-4 decoration-primary/20 transition-all">
+                  self-paced AI interview
+                </span>{' '}
+                for {jobTitle}
+                {companyLine ? ` with ${companyLine}` : ''}. Complete it when you are ready from this preparation screen.
               </p>
             </header>
 
@@ -98,11 +266,10 @@ const SeekerInterviewPreparation = () => {
             {/* System Check Card */}
             <div className="bg-surface-container-low rounded-[3rem] overflow-hidden border border-outline-variant/10 shadow-sm">
               <div className="aspect-video relative bg-slate-900 overflow-hidden group">
-                <img 
-                  className="w-full h-full object-cover opacity-60 scale-105 group-hover:scale-100 transition-transform duration-[2000ms]" 
-                  src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&q=80&w=800" 
-                  alt="Candidate Camera Preview"
-                />
+                <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 opacity-90" />
+                <div className="absolute inset-0 flex items-center justify-center opacity-30">
+                  <span className="material-symbols-outlined text-white text-8xl">videocam</span>
+                </div>
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent"></div>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="px-6 py-2.5 rounded-full bg-white/10 backdrop-blur-3xl flex items-center gap-3 border border-white/20 shadow-2xl">
@@ -141,10 +308,10 @@ const SeekerInterviewPreparation = () => {
               <div className="relative z-10 space-y-4">
                 <div className="flex items-center gap-3 text-on-tertiary-fixed-variant">
                   <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em]">Contextual Match Score: 98%</span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em]">Session focus</span>
                 </div>
                 <p className="text-base font-black leading-snug text-on-tertiary-fixed italic">
-                  "Your leadership profile shows exceptional alignment. Focus on Vertical SaaS scaling during the strategy phase."
+                  Answer based on your real experience for {jobTitle}. The interviewer adapts follow-ups from what you share.
                 </p>
               </div>
               <div className="absolute -bottom-10 -right-10 opacity-10 pointer-events-none">
@@ -154,7 +321,7 @@ const SeekerInterviewPreparation = () => {
 
             {/* Primary Action Zone */}
             <div className="space-y-4 pt-6">
-              <button className="w-full bg-gradient-to-r from-primary to-primary-container text-white py-6 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3">
+              <button onClick={beginSession} className="w-full bg-gradient-to-r from-primary to-primary-container text-white py-6 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3">
                 Begin Session
                 <span className="material-symbols-outlined text-base">rocket_launch</span>
               </button>
@@ -165,8 +332,14 @@ const SeekerInterviewPreparation = () => {
                 Back to Schedule
               </button>
               <div className="text-center space-y-1">
-                <p className="text-[9px] text-on-surface-variant/40 uppercase font-black tracking-widest">Approx. 45 Minute Evaluation</p>
-                <p className="text-[9px] text-primary/40 uppercase font-black tracking-widest">Authorization expires in 72 hours</p>
+                <p className="text-[9px] text-on-surface-variant/40 uppercase font-black tracking-widest">Duration follows the job&apos;s interview settings</p>
+                {application?.expiresAt ? (
+                  <p className="text-[9px] text-primary/40 uppercase font-black tracking-widest">
+                    Invitation active until {new Date(application.expiresAt).toLocaleString()}
+                  </p>
+                ) : (
+                  <p className="text-[9px] text-on-surface-variant/40 uppercase font-black tracking-widest">Complete before your invitation expires</p>
+                )}
               </div>
             </div>
           </div>

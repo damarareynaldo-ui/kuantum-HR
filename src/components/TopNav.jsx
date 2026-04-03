@@ -1,19 +1,50 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
+import { getSeekerProfile } from '../lib/seekerApi.js';
+import { fetchRecruiterProfile } from '../lib/hrApi.js';
+
+function initialsFromName(name, email) {
+  const n = String(name || '').trim();
+  if (n) {
+    const parts = n.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return n.slice(0, 2).toUpperCase();
+  }
+  const e = String(email || '').trim();
+  if (e) return e.slice(0, 2).toUpperCase();
+  return '?';
+}
+
+function roleLabel(role) {
+  if (role === 'recruiter') return 'Recruiter';
+  if (role === 'applicant') return 'Applicant';
+  return role ? String(role) : 'User';
+}
 
 const TopNav = () => {
   const location = useLocation();
   const isSeeker = location.pathname.startsWith('/seeker');
+  const [profile, setProfile] = React.useState(null);
 
-  const user = isSeeker ? {
-    name: 'Andi Pratama',
-    role: 'Sales Manager',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAwcHnfmPQ90Kg10ElyCe0zBiW3GLtAJ4lGvXa9lnasOmSWyKc0JG-mHZUrB8wnCRqECfGdX_SurEAK2F6d7-U9GsX3DrPQEwf8uxZ_pyXJGGCSdpJdvsD8VW1WGZXBNpDXvSkr9DdELAjpVpaJfHRt7S9GF4Q4fOQSR8M6qW_3qaOhpUHZV5cXJJnunKdtVTK1Zg_JyuDDJyT9GET2EOG_wFjgoQhWSm7zuHLV7CcFQo7uavxPRGYr95mCwf7jb2IHnWT80Ml2Cpz4'
-  } : {
-    name: 'Sarah Morrison',
-    role: 'HR Director',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD3kDOLHqkM5g1PGEOHuWMuI5CzNgDiLJm1LauEe6u2w4nThIywHyEhg5obek_Ess6ZVOw6Ll8PrnDMYL2mw0uZXeKyeOvQv06ys-K7aJzuH-Nwcn0to9xnuvvvoiu_bAj0w0Idd3MHt03p0svRck-n5LANv-5uBr-BxmdDYb7sIxoe9ne5qCQr8up9ozlF2Kh1ahnZiwiwy7ME9-pa3Xn5x0sWS2P4OABp7CZuVkUvXFSp9XdsbUVFQ9IRdU7VfHUl10Vuae2dbNba'
-  };
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const row = isSeeker ? await getSeekerProfile() : await fetchRecruiterProfile();
+        if (!cancelled) setProfile(row);
+      } catch {
+        if (!cancelled) setProfile(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isSeeker]);
+
+  const name = profile?.name || profile?.email || 'Account';
+  const sub = roleLabel(profile?.role);
+  const initials = initialsFromName(profile?.name, profile?.email);
+
   return (
     <header className="w-full sticky top-0 z-40 bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-md flex items-center justify-between px-8 h-16 border-b border-outline-variant/10">
       <div className="flex items-center gap-4">
@@ -27,23 +58,24 @@ const TopNav = () => {
         </div>
       </div>
       <div className="flex items-center gap-4">
-        <button className="p-2 text-slate-500 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-colors relative">
+        <button type="button" className="p-2 text-slate-500 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-colors relative">
           <span className="material-symbols-outlined">notifications</span>
           <span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-slate-50"></span>
         </button>
-        <button className="p-2 text-slate-500 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-colors">
+        <button type="button" className="p-2 text-slate-500 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-colors">
           <span className="material-symbols-outlined">settings</span>
         </button>
         <div className="flex items-center gap-3 pl-4 border-l border-outline-variant/10">
           <div className="text-right hidden sm:block">
-            <p className="text-xs font-bold text-on-surface leading-none">{user.name}</p>
-            <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mt-1">{user.role}</p>
+            <p className="text-xs font-bold text-on-surface leading-none">{name}</p>
+            <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mt-1">{sub}</p>
           </div>
-          <img
-            src={user.avatar}
-            className="w-8 h-8 rounded-full object-cover ring-2 ring-primary/10"
-            alt="Profile"
-          />
+          <div
+            className="w-8 h-8 rounded-full bg-primary/15 text-primary text-[10px] font-black flex items-center justify-center ring-2 ring-primary/10"
+            aria-hidden
+          >
+            {initials}
+          </div>
         </div>
       </div>
     </header>

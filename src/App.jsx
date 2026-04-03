@@ -23,7 +23,7 @@ import SeekerJobDetail from './pages/SeekerJobDetail';
 import JobManagement from './pages/JobManagement';
 import JobApplicantsDetail from './pages/JobApplicantsDetail';
 import CreateAIInterview from './pages/CreateAIInterview';
-import SeekerLayout from './components/SeekerLayout';
+import SeekerInterviewAccess from './pages/SeekerInterviewAccess';
 
 // Placeholder for remaining pages
 const Settings = () => <Dashboard />; 
@@ -45,8 +45,9 @@ function App() {
         <Route path="/jobs/new" element={<CreateJob />} />
         <Route path="/invite" element={<Invite />} />
         <Route path="/comparison" element={<Comparison />} />
-        <Route path="/interviews" element={<CreateInterview />} />
-        <Route path="/interviews/agent" element={<CreateAIInterview />} />
+        <Route path="/interviews/setup" element={<CreateInterview />} />
+        <Route path="/interviews" element={<CreateAIInterview />} />
+        <Route path="/interviews/agent" element={<Navigate to="/interviews" replace />} />
         <Route path="/results" element={<InterviewResultsList />} />
         <Route path="/results/detail" element={<InterviewResults />} />
         <Route path="/settings" element={<Settings />} />
@@ -61,6 +62,7 @@ function App() {
         <Route path="/seeker/results/:id" element={<SeekerInterviewResult />} />
         <Route path="/seeker/schedule" element={<SeekerInterviewSchedule />} />
         <Route path="/seeker/interview/prepare/:id" element={<SeekerInterviewPreparation />} />
+        <Route path="/seeker/interview/access" element={<SeekerInterviewAccess />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />

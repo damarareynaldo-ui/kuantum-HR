@@ -1,23 +1,53 @@
 import React from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { fetchSessionResults } from '../lib/hrApi.js';
+
+function initialsFromName(name, email) {
+  const n = String(name || '').trim();
+  if (n) {
+    const parts = n.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return n.slice(0, 2).toUpperCase();
+  }
+  const e = String(email || '').trim();
+  return e ? e.slice(0, 2).toUpperCase() : '?';
+}
 
 const InterviewResults = () => {
   const navigate = useNavigate();
-  
-  const transcript = [
-    { role: 'AI', name: 'Kuantum Interviewer', time: '10:02 AM', text: "Good morning, Alex. To start, could you walk me through a complex design system challenge you've solved recently, specifically regarding cross-functional handoff?" },
-    { role: 'Candidate', name: 'Alex Rivera', time: '10:03 AM', text: "That's a great question. At my last role, we were moving from a monolithic design file to a federated library system. The biggest hurdle wasn't the components themselves, but the documentation parity between Figma and our React storybook. I implemented a 'Tokens-First' workflow that synced directly via GitHub Actions.", user: true },
-    { role: 'AI', name: 'Kuantum Interviewer', time: '10:05 AM', text: "Interesting approach. How did you handle the friction from engineers who were resistant to changing their established local styling workflow?" },
-    { role: 'Candidate', name: 'Alex Rivera', time: '10:06 AM', text: "I focused on highlighting the 'WIIFM'—What's In It For Them. By showing them how the automation reduced their PR revision time by nearly 40%, the resistance turned into advocacy. We ran a series of brown-bag lunches to demo the time savings.", user: true }
-  ];
+  const [params] = useSearchParams();
+  const [result, setResult] = React.useState(null);
+  const [error, setError] = React.useState('');
+  const sessionId = params.get('sessionId');
 
-  const scores = [
-    { label: 'Communication', score: 8, offset: 35.2 },
-    { label: 'Technical', score: 7, offset: 52.8 },
-    { label: 'Problem Solving', score: 6, offset: 70.4 },
-    { label: 'Culture Fit', score: 8, offset: 35.2 }
-  ];
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!sessionId) return;
+      try {
+        const r = await fetchSessionResults(sessionId);
+        if (!cancelled) setResult(r);
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load results');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
+  
+  const transcript = result?.transcript
+    ? String(result.transcript)
+        .split('\n')
+        .filter(Boolean)
+        .map((text, idx) => ({ role: idx % 2 ? 'Candidate' : 'AI', name: idx % 2 ? (result?.candidate?.name || 'Candidate') : 'Kuantum Interviewer', time: '', text, user: idx % 2 === 1 }))
+    : [];
+
+  const scores = (result?.competencies || []).slice(0, 4).map((c) => ({
+    label: c.label,
+    score: Math.round((Number(c.val || 0) / 10) || 0),
+  }));
 
   return (
     <Layout>
@@ -30,8 +60,8 @@ const InterviewResults = () => {
             </button>
             <div className="h-10 w-px bg-outline-variant/20"></div>
             <div>
-              <h1 className="text-2xl font-black tracking-tight text-on-surface leading-none">Interview Results: Senior Product Designer</h1>
-              <p className="text-[10px] text-on-surface-variant font-black uppercase tracking-widest mt-1 opacity-60">Candidate ID: #UX-88291 • Alex Rivera</p>
+              <h1 className="text-2xl font-black tracking-tight text-on-surface leading-none">Interview Results: {result?.job?.title || 'Session'}</h1>
+              <p className="text-[10px] text-on-surface-variant font-black uppercase tracking-widest mt-1 opacity-60">Session: {result?.sessionId || '-' } • {result?.candidate?.name || '-'}</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -41,11 +71,9 @@ const InterviewResults = () => {
              <button className="p-3 text-on-surface-variant hover:text-primary transition-colors">
                <span className="material-symbols-outlined">settings</span>
              </button>
-             <img 
-               className="w-10 h-10 rounded-full border-2 border-primary/20" 
-               src="https://lh3.googleusercontent.com/aida-public/AB6AXuDF2ekXqzVc7K9LaLjgjvGcgrcUCCN5ZrSHAnXENh67sTMGcOZf6qlwdFgys2G3KiXgzuiluY4SohQo8UoXJbqcAldidk-dDU1_iKdbxC6VnQaZebtXbhkiDzThfe4aVKTFURr5GVLsEIkxwAXx7XAGnA9N44CANxIZccCDfAcC38WEPfUhQ58_iKJgh4-FKQZbqSODaxg1gUXAyQRNhkk5Ft9vhdRDsug5TweIzgYAcGDlQUW6QiP7zVHcpCcTEr6OekUX5vI8x66s" 
-               alt="Recruiter" 
-             />
+             <div className="w-10 h-10 rounded-full border-2 border-primary/20 bg-primary/15 text-primary text-[10px] font-black flex items-center justify-center">
+               {initialsFromName(result?.candidate?.name, result?.candidate?.email)}
+             </div>
           </div>
         </header>
 
@@ -61,7 +89,7 @@ const InterviewResults = () => {
                 <h3 className="font-black text-on-surface tracking-tight uppercase tracking-widest text-[12px]">Interview Transcript</h3>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-[10px] px-3 py-1 bg-secondary/10 text-secondary rounded-full font-black tracking-widest uppercase animate-pulse">Live Recording</span>
+                <span className="text-[10px] px-3 py-1 bg-secondary/10 text-secondary rounded-full font-black tracking-widest uppercase">Recorded</span>
                 <button className="material-symbols-outlined text-outline opacity-40 hover:opacity-100 transition-opacity">more_vert</button>
               </div>
             </div>
@@ -70,8 +98,8 @@ const InterviewResults = () => {
               {transcript.map((chat, idx) => (
                 <div key={idx} className="flex gap-6 max-w-3xl">
                   {chat.user ? (
-                    <div className="w-10 h-10 shrink-0 rounded-2xl bg-primary/10 overflow-hidden ring-2 ring-white">
-                       <img className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCD-YVGzCUYiD4-rcRFlWyFzrSbBCxuLFUwhsdlCBFcttNXY0ipih5arR7VVu3QVvnldo67Xys6SCmA9fLEDtsvFmSH5HOmdo1espnZJP4ornEV9aXF9c5qCyaBTVI2nwKzvSYUuqccMCV2xX_myIu_6v-NWf6bwYnkO9ONTEVXiEyV0mER3Nhm9I0qVt_Qx2tbJcaqXpcSLEaaSemLG1_PLOkJQcvCKJ1v78VVP4XjUg-tOpUDkp5PZL3X5UtAdwHfRUkXl-pgvXBx" alt="Candidate" />
+                    <div className="w-10 h-10 shrink-0 rounded-2xl bg-primary/10 ring-2 ring-white flex items-center justify-center text-[10px] font-black text-primary">
+                       {initialsFromName(result?.candidate?.name, result?.candidate?.email)}
                     </div>
                   ) : (
                     <div className="w-10 h-10 shrink-0 rounded-2xl bg-surface-container-highest flex items-center justify-center text-[10px] font-black text-on-surface-variant shadow-sm ring-2 ring-white uppercase">AI</div>
@@ -79,7 +107,7 @@ const InterviewResults = () => {
                   <div className="space-y-2 flex-1">
                     <div className="flex items-baseline gap-3">
                       <span className={`text-[12px] font-black uppercase tracking-widest ${chat.user ? 'text-primary' : 'text-on-surface-variant opacity-60'}`}>{chat.name}</span>
-                      <span className="text-[10px] text-on-surface-variant opacity-40 font-bold">{chat.time}</span>
+                      <span className="text-[10px] text-on-surface-variant opacity-40 font-bold">{chat.time || ''}</span>
                     </div>
                     <div className={`p-6 rounded-[1.8rem] text-sm leading-relaxed shadow-sm border border-outline-variant/5 ${chat.user ? 'bg-white text-on-surface' : 'bg-transparent text-on-surface-variant italic'}`}>
                       {chat.text}
@@ -124,7 +152,7 @@ const InterviewResults = () => {
                  AI Evaluation Insight
               </h3>
               <p className="text-sm text-on-tertiary-fixed-variant leading-relaxed font-medium">
-                Candidate demonstrates strong empathy-driven design logic and deep technical proficiency in modern handoff workflows. High scores in communication suggest a strong potential for cross-functional leadership.
+                {result?.summary || 'AI summary not available yet.'}
               </p>
             </div>
 
@@ -136,10 +164,10 @@ const InterviewResults = () => {
                   Key Strengths
                 </h4>
                 <ul className="space-y-4">
-                  {['Systematic design thinking', 'Articulate communication', 'Strong technical bridge'].map((item, i) => (
+                  {(result?.analysis?.keyMoments || ['No key moments']).map((item, i) => (
                     <li key={i} className="flex items-start gap-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider">
                        <span className="material-symbols-outlined text-primary text-[16px]">check_circle</span>
-                       {item}
+                       {typeof item === 'string' ? item : item.quote || item.topic || 'Key moment'}
                     </li>
                   ))}
                 </ul>
@@ -150,7 +178,7 @@ const InterviewResults = () => {
                   Growth Areas
                 </h4>
                 <ul className="space-y-4">
-                  {[ 'Hesitation on scaling ops', 'Limited KPI exposure'].map((item, i) => (
+                  {[(result?.redFlags || 'None critical')].map((item, i) => (
                     <li key={i} className="flex items-start gap-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider">
                        <span className="material-symbols-outlined text-error text-[16px]">cancel</span>
                        {item}
@@ -167,7 +195,7 @@ const InterviewResults = () => {
                  <span className="material-symbols-outlined text-5xl" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
                  <div className="space-y-1 text-center">
                     <span className="text-[10px] font-black tracking-[0.4em] uppercase opacity-80">Machine Recommendation</span>
-                    <h2 className="text-2xl font-black leading-none tracking-tighter">RECOMMENDED FOR HIRE</h2>
+                    <h2 className="text-2xl font-black leading-none tracking-tighter">{result?.overallScore != null && Number(result.overallScore) >= 80 ? 'RECOMMENDED FOR HIRE' : 'REVIEW FURTHER'}</h2>
                  </div>
               </div>
               
@@ -189,6 +217,7 @@ const InterviewResults = () => {
             </div>
           </section>
         </div>
+        {error && <p className="text-sm font-bold text-error">{error}</p>}
       </div>
     </Layout>
   );

@@ -1,15 +1,23 @@
 import React from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { fetchCandidates } from '../lib/hrApi.js';
 
 const InterviewResultsList = () => {
   const navigate = useNavigate();
-  const results = [
-    { name: 'Elena Costa', job: 'Senior Product Designer', match: 98, status: 'Elite Match', date: '2 hours ago', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBrYpE2bRj3JDQ1jQFLVgFugZO9dtrDjs9YsOc-yg7wEQVNpVS-6_rGiNTrDVJ-pEkRuPHblcAk5UYGm0VYZDXLuqq2MBDDtHznt21j--5kZ8oC1-J2T5qY-vqYQQDAfhb89CEiYUyld-FQA8SiKr_6I5uwLJpzw20lslHqzQKxyL0_BVusZFzlboWmZJTh6RKnmnXdvNZpiMq3pJQyiWoyAWLnqBm9dNqWJrW15TBxMsWpdHq5An4w82yLL3UX2V6nYqz5x3MyMl96' },
-    { name: 'Alex Rivera', job: 'Senior UX Designer', match: 87, status: 'Strong Match', date: '5 hours ago', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCD-YVGzCUYiD4-rcRFlWyFzrSbBCxuLFUwhsdlCBFcttNXY0ipih5arR7VVu3QVvnldo67Xys6SCmA9fLEDtsvFmSH5HOmdo1espnZJP4ornEV9aXF9c5qCyaBTVI2nwKzvSYUuqccMCV2xX_myIu_6v-NWf6bwYnkO9ONTEVXiEyV0mER3Nhm9I0qVt_Qx2tbJcaqXpcSLEaaSemLG1_PLOkJQcvCKJ1v78VVP4XjUg-tOpUDkp5PZL3X5UtAdwHfRUkXl-pgvXBx' },
-    { name: 'Marcus Thorne', job: 'Frontend Developer', match: 84, status: 'Good Match', date: 'Yesterday', initials: 'MT', color: 'bg-primary/10 text-primary' },
-    { name: 'Juliana Silva', job: 'UX Researcher', match: 92, status: 'Elite Match', date: '2 days ago', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCKejH43LX5nRPL88AcWab_eQdEceeGuf8FN9jez7atDxYbnBLDbygUgILNPeMvkQcQoD4-OwpNUdAi8WDGbC1_f5OMkAhLAhI_v-46BzWim-JjsfKcO3MY4JdTKmfpkMW1SGmS411X62hdW5z3GtyJ-YvFSFkH1p3-FWfCFL-tJXigO3RNmvazn6_L3UVy-Vhq0Y1qpP8sN8wMNhpDL57vI-lSLwWFx3qFFqyChYcOmq9jCC1fYOvXBvVmDQ7CNnnM8azKzEYEMrFQ' },
-  ];
+  const [results, setResults] = React.useState([]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const rows = await fetchCandidates().catch(() => []);
+      if (cancelled) return;
+      setResults(rows.filter((r) => String(r.status || '').toLowerCase().includes('completed')));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <Layout>
@@ -36,13 +44,13 @@ const InterviewResultsList = () => {
         </header>
 
         {/* Featured Elite Talent Card */}
-        <div className="bg-tertiary-fixed p-10 rounded-[3rem] relative overflow-hidden shadow-2xl shadow-tertiary/10 group cursor-pointer" onClick={() => navigate('/results/detail')}>
+        <div className="bg-tertiary-fixed p-10 rounded-[3rem] relative overflow-hidden shadow-2xl shadow-tertiary/10 group cursor-pointer" onClick={() => results[0] && navigate(`/results/detail?sessionId=${encodeURIComponent(String(results[0].id))}`)}>
           <div className="absolute top-0 right-0 w-80 h-80 bg-white/20 blur-[100px] -z-10 translate-x-1/4 -translate-y-1/3 group-hover:scale-150 transition-transform duration-1000"></div>
           
           <div className="flex flex-col lg:flex-row gap-12 items-center">
             <div className="relative">
               <div className="w-40 h-40 rounded-[2.5rem] overflow-hidden ring-8 ring-white/30 shadow-2xl group-hover:scale-105 transition-transform">
-                <img className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrYpE2bRj3JDQ1jQFLVgFugZO9dtrDjs9YsOc-yg7wEQVNpVS-6_rGiNTrDVJ-pEkRuPHblcAk5UYGm0VYZDXLuqq2MBDDtHznt21j--5kZ8oC1-J2T5qY-vqYQQDAfhb89CEiYUyld-FQA8SiKr_6I5uwLJpzw20lslHqzQKxyL0_BVusZFzlboWmZJTh6RKnmnXdvNZpiMq3pJQyiWoyAWLnqBm9dNqWJrW15TBxMsWpdHq5An4w82yLL3UX2V6nYqz5x3MyMl96" alt="Elena Costa" />
+                <div className="w-full h-full object-cover bg-primary/20 flex items-center justify-center font-black text-primary text-2xl">{String(results[0]?.name || 'NA').slice(0,2).toUpperCase()}</div>
               </div>
               <div className="absolute -bottom-4 -right-4 w-12 h-12 bg-tertiary rounded-full border-4 border-white flex items-center justify-center text-white text-2xl font-bold">
                  <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
@@ -52,9 +60,9 @@ const InterviewResultsList = () => {
             <div className="space-y-6 flex-1 text-center lg:text-left">
               <div className="space-y-2">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/40 backdrop-blur-md text-tertiary text-[10px] font-black uppercase tracking-widest">Elite Talent Identified</div>
-                <h2 className="text-4xl font-black text-on-tertiary-fixed tracking-tight">Elena Costa</h2>
+                <h2 className="text-4xl font-black text-on-tertiary-fixed tracking-tight">{results[0]?.name || 'Top candidate'}</h2>
                 <p className="text-on-tertiary-fixed-variant leading-relaxed font-medium text-lg max-w-2xl">
-                  Elena has achieved a <span className="text-tertiary font-bold">98% AI Match Score</span> for the Product Designer role. Her responses demonstrate exceptional systems thinking and user advocacy.
+                  Candidate has achieved a <span className="text-tertiary font-bold">{results[0]?.score || '--'}</span> for {results[0]?.job || 'the role'}.
                 </p>
               </div>
               <div className="flex flex-wrap justify-center lg:justify-start gap-4">
@@ -66,7 +74,7 @@ const InterviewResultsList = () => {
 
             <div className="flex flex-col items-center gap-2 bg-white/20 backdrop-blur-md p-8 rounded-[2rem] border border-white/30">
                <span className="text-[10px] font-black uppercase tracking-widest text-on-tertiary-fixed-variant opacity-60">Curator Score</span>
-               <div className="text-6xl font-black text-tertiary tracking-tighter">98<span className="text-xl">%</span></div>
+               <div className="text-6xl font-black text-tertiary tracking-tighter">{String(results[0]?.score || '--').replace('%','')}<span className="text-xl">%</span></div>
                <span className="text-[9px] font-black uppercase tracking-widest bg-tertiary text-white px-2 py-0.5 rounded-full">Top 1%</span>
             </div>
           </div>
@@ -105,17 +113,13 @@ const InterviewResultsList = () => {
                 {results.map((r, i) => (
                   <tr 
                     key={i} 
-                    onClick={() => navigate('/results/detail')}
+                    onClick={() => navigate(`/results/detail?sessionId=${encodeURIComponent(String(r.id))}`)}
                     className="hover:bg-primary/5 transition-all duration-300 cursor-pointer group"
                   >
                     <td className="px-10 py-8">
                       <div className="flex items-center gap-5">
                         <div className="relative">
-                          {r.img ? (
-                            <img className="w-14 h-14 rounded-2xl object-cover ring-4 ring-white shadow-lg group-hover:scale-105 transition-transform" src={r.img} alt={r.name} />
-                          ) : (
-                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-sm shadow-md ring-4 ring-white ${r.color}`}>{r.initials}</div>
-                          )}
+                          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center font-black text-sm shadow-md ring-4 ring-white text-primary">{String(r.name || '?').slice(0,2).toUpperCase()}</div>
                         </div>
                         <div>
                           <div className="text-on-surface font-black text-lg tracking-tight group-hover:text-primary transition-colors">{r.name}</div>
@@ -126,15 +130,15 @@ const InterviewResultsList = () => {
                     <td className="px-8 py-8">
                        <div className="flex items-center gap-4">
                           <div className="w-32 h-2 bg-surface-container-low rounded-full overflow-hidden">
-                             <div className="h-full signature-gradient transition-all duration-1000" style={{ width: `${r.match}%` }}></div>
+                             <div className="h-full signature-gradient transition-all duration-1000" style={{ width: `${Number(String(r.score || '').replace('%','')) || 0}%` }}></div>
                           </div>
-                          <span className="text-md font-black text-on-surface tracking-tighter">{r.match}%</span>
+                          <span className="text-md font-black text-on-surface tracking-tighter">{r.score}</span>
                        </div>
                     </td>
                     <td className="px-8 py-8">
                       <span className={`px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest ${
-                        r.status === 'Elite Match' ? 'bg-tertiary-fixed text-tertiary shadow-lg shadow-tertiary/10' : 
-                        r.status === 'Strong Match' ? 'bg-primary-fixed text-primary' : 
+                        r.status === 'Completed' ? 'bg-tertiary-fixed text-tertiary shadow-lg shadow-tertiary/10' :
+                        r.status === 'In Progress' ? 'bg-primary-fixed text-primary' :
                         'bg-surface-container-highest text-on-surface-variant opacity-60'
                       }`}>
                         {r.status}
@@ -155,7 +159,7 @@ const InterviewResultsList = () => {
           </div>
 
           <div className="p-10 text-center bg-surface-container-low/20">
-             <button className="text-[11px] font-black text-primary uppercase tracking-[0.3em] hover:underline">Load 44 Additional Results</button>
+             <button className="text-[11px] font-black text-primary uppercase tracking-[0.3em] hover:underline">Live from API</button>
           </div>
         </div>
       </div>

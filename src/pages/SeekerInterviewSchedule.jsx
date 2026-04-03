@@ -1,26 +1,45 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import SeekerLayout from '../components/SeekerLayout';
+import { getMyApplications } from '../lib/seekerApi';
 
 const SeekerInterviewSchedule = () => {
   const navigate = useNavigate();
+  const [applications, setApplications] = React.useState([]);
 
-  const secondaryInterviews = [
-    {
-      id: '2',
-      title: 'Senior Account Executive',
-      status: 'Ready to start',
-      icon: 'corporate_fare',
-      expiry: '3 days'
-    },
-    {
-      id: '3',
-      title: 'Channel Partnership Lead',
-      status: 'Ready to start',
-      icon: 'hub',
-      expiry: '3 days'
+  React.useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const rows = await getMyApplications();
+        if (!cancelled)
+          setApplications(
+            (Array.isArray(rows) ? rows : []).filter(
+              (r) =>
+                r.sessionId &&
+                ['invited', 'in_progress'].includes(String(r.status)),
+            ),
+          );
+      } catch {
+        if (!cancelled) setApplications([]);
+      }
     }
-  ];
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const featuredInterview = applications[0];
+  const secondaryInterviews = applications.slice(1).map((item) => ({
+    id: item.id,
+    jobId: item.jobId,
+    title: item.jobTitle,
+    status: 'Ready to start',
+    icon: 'corporate_fare',
+    expiresAt: item.expiresAt,
+  }));
+  const upcomingCount = applications.length;
 
   return (
     <SeekerLayout>
@@ -30,7 +49,9 @@ const SeekerInterviewSchedule = () => {
           <div>
             <h2 className="text-4xl font-extrabold text-on-surface tracking-tight mb-2 italic drop-shadow-sm">Interview Schedule</h2>
             <div className="flex items-center gap-2">
-              <span className="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase">3 UPCOMING</span>
+              <span className="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase">
+                {upcomingCount} UPCOMING
+              </span>
               <span className="text-on-surface-variant text-sm font-medium opacity-80">AI-led interviews • Conduct yours whenever you're ready</span>
             </div>
           </div>
@@ -57,17 +78,17 @@ const SeekerInterviewSchedule = () => {
                   <span className="bg-tertiary text-on-tertiary px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-tertiary/20">High Priority Match</span>
                   <span className="text-on-tertiary-fixed-variant font-bold text-sm flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
-                    98% AI Alignment
+                    Active invitation
                   </span>
                 </div>
-                <h3 
-                  onClick={() => navigate('/seeker/job/1')}
+                <h3
+                  onClick={() => featuredInterview?.jobId && navigate(`/seeker/job/${featuredInterview.jobId}`)}
                   className="text-4xl font-black text-on-tertiary-fixed mb-2 tracking-tight leading-none cursor-pointer hover:underline underline-offset-8 transition-all"
                 >
-                  Sales Manager at Kuantum
+                  {featuredInterview ? `${featuredInterview.jobTitle} at ${featuredInterview.companyName}` : 'No active interview'}
                 </h3>
                 <p className="text-on-tertiary-fixed-variant opacity-80 text-xl font-medium max-w-lg leading-relaxed">
-                  Final round briefing for the Global Sales Team expansion initiative.
+                  {featuredInterview ? 'Interview invitation is active and ready to start.' : 'Apply to a job to receive an interview invitation.'}
                 </p>
               </div>
 
@@ -76,7 +97,13 @@ const SeekerInterviewSchedule = () => {
                   <div className="flex flex-col">
                     <span className="text-[10px] font-black text-on-surface-variant/60 uppercase tracking-[0.2em] mb-1.5">Availability</span>
                     <span className="text-xl font-black text-on-surface leading-none">Available Now</span>
-                    <span className="text-[10px] font-black text-tertiary uppercase mt-1.5 tracking-widest text-shadow">Link expires in 3 days</span>
+                    {featuredInterview?.expiresAt ? (
+                      <span className="text-[10px] font-black text-tertiary uppercase mt-1.5 tracking-widest text-shadow">
+                        Invitation active until {new Date(featuredInterview.expiresAt).toLocaleString()}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-black text-on-surface-variant uppercase mt-1.5 tracking-widest">No expiry on file</span>
+                    )}
                   </div>
                   <div className="flex flex-col border-l border-outline-variant/30 pl-12">
                     <span className="text-[10px] font-black text-on-surface-variant/60 uppercase tracking-[0.2em] mb-1.5">Duration</span>
@@ -84,7 +111,8 @@ const SeekerInterviewSchedule = () => {
                   </div>
                 </div>
                 <button 
-                  onClick={() => navigate('/seeker/interview/prepare/1')}
+                  onClick={() => featuredInterview && navigate(`/seeker/interview/prepare/${featuredInterview.id}`)}
+                  disabled={!featuredInterview}
                   className="w-full sm:w-auto bg-primary text-white px-10 py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:scale-[1.03] active:scale-95 transition-all shadow-2xl shadow-primary/30"
                 >
                   Start Interview Now 
@@ -104,7 +132,7 @@ const SeekerInterviewSchedule = () => {
                       <span className="material-symbols-outlined text-primary text-3xl">{item.icon}</span>
                     </div>
                     <div 
-                      onClick={() => navigate(`/seeker/job/${item.id}`)}
+                      onClick={() => navigate(`/seeker/job/${item.jobId}`)}
                       className="cursor-pointer group/title"
                     >
                       <h5 className="text-2xl font-black text-on-surface mb-1 tracking-tight group-hover/title:text-primary transition-all underline-offset-4 group-hover/title:underline">{item.title}</h5>
@@ -119,8 +147,10 @@ const SeekerInterviewSchedule = () => {
                   <div className="flex items-center gap-4 w-full sm:w-auto">
                     <div className="flex flex-col items-end gap-1.5 flex-1 sm:flex-initial pr-2">
                        <span className="text-[10px] font-black text-on-surface-variant/50 flex items-center gap-1.5 uppercase tracking-widest whitespace-nowrap">
-                        <span className="material-symbols-outlined text-sm">schedule</span> 
-                        Link expires in {item.expiry}
+                        <span className="material-symbols-outlined text-sm">schedule</span>
+                        {item.expiresAt
+                          ? `Until ${new Date(item.expiresAt).toLocaleString()}`
+                          : 'No expiry'}
                       </span>
                     </div>
                     <button 
@@ -142,29 +172,28 @@ const SeekerInterviewSchedule = () => {
           <div className="col-span-12 lg:col-span-4 space-y-8">
             {/* Preparation Hub Card */}
             <div className="bg-surface-container-low p-10 rounded-[2.5rem] border border-outline-variant/10 shadow-sm">
-              <h4 className="text-2xl font-black text-on-surface mb-8 tracking-tight italic">Preparation Hub</h4>
-              <div className="space-y-4">
-                <div className="p-5 bg-surface-container-lowest rounded-2xl flex items-center gap-5 border-l-4 border-primary group hover:translate-x-1 transition-transform cursor-pointer shadow-sm">
-                  <div className="w-12 h-12 rounded-xl bg-primary-fixed flex items-center justify-center text-primary">
-                    <span className="material-symbols-outlined text-2xl">description</span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-black text-on-surface">Interview Briefing.pdf</p>
-                    <p className="text-[10px] text-on-surface-variant/50 uppercase font-bold tracking-wider mt-0.5">Read 2 days ago</p>
-                  </div>
-                </div>
-                <div className="p-5 bg-surface-container-lowest rounded-2xl flex items-center gap-5 border-l-4 border-tertiary group hover:translate-x-1 transition-transform cursor-pointer shadow-sm">
-                  <div className="w-12 h-12 rounded-xl bg-tertiary-fixed flex items-center justify-center text-tertiary">
-                    <span className="material-symbols-outlined text-2xl">video_library</span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-black text-on-surface">Role Overview Video</p>
-                    <p className="text-[10px] text-on-surface-variant/50 uppercase font-bold tracking-wider mt-0.5">Not started</p>
-                  </div>
-                </div>
-              </div>
-              <button className="w-full mt-10 p-5 bg-on-surface text-surface rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:opacity-90 transition-all shadow-xl shadow-black/10 active:scale-95">
-                Go to Preparation Center
+              <h4 className="text-2xl font-black text-on-surface mb-8 tracking-tight italic">Preparation</h4>
+              <ul className="space-y-4 text-sm font-bold text-on-surface-variant">
+                <li className="flex gap-3">
+                  <span className="material-symbols-outlined text-primary text-xl">check_circle</span>
+                  Re-read the job description and your submitted notes.
+                </li>
+                <li className="flex gap-3">
+                  <span className="material-symbols-outlined text-primary text-xl">videocam</span>
+                  Test camera and microphone in the browser you will use.
+                </li>
+                <li className="flex gap-3">
+                  <span className="material-symbols-outlined text-primary text-xl">wifi</span>
+                  Use a stable connection; wired is best when possible.
+                </li>
+              </ul>
+              <button
+                type="button"
+                onClick={() => featuredInterview && navigate(`/seeker/interview/prepare/${featuredInterview.id}`)}
+                disabled={!featuredInterview}
+                className="w-full mt-10 p-5 bg-on-surface text-surface rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:opacity-90 transition-all shadow-xl shadow-black/10 active:scale-95 disabled:opacity-50"
+              >
+                Open preparation
               </button>
             </div>
 
@@ -175,7 +204,15 @@ const SeekerInterviewSchedule = () => {
               </div>
               <h5 className="text-xl font-black mb-4 tracking-tight drop-shadow-md">AI Pro-Tip</h5>
               <p className="text-sm leading-relaxed font-bold opacity-90 tracking-tight">
-                Since this is an AI-led interview, you can take it at any time. Find a quiet space and test your audio before you begin. You have <span className="underline decoration-2">3 days</span> to complete the session.
+                Since this is an AI-led interview, you can take it when you are ready. Find a quiet space and test your audio before you begin.
+                {featuredInterview?.expiresAt ? (
+                  <span className="block mt-2">
+                    Complete before{' '}
+                    <span className="underline decoration-2">{new Date(featuredInterview.expiresAt).toLocaleString()}</span>.
+                  </span>
+                ) : (
+                  <span className="block mt-2">Complete before your invitation expires.</span>
+                )}
               </p>
             </div>
 

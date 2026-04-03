@@ -1,97 +1,81 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import SeekerLayout from '../components/SeekerLayout';
+import { fetchPublicJobs } from '../lib/publicJobsApi.js';
+
+const CAROUSEL_META = [
+  { color: 'from-primary to-[#0038a8]', icon: 'bolt' },
+  { color: 'from-[#4361EE] to-[#3F37C9]', icon: 'code' },
+  { color: 'from-[#7209B7] to-[#560BAD]', icon: 'palette' },
+  { color: 'from-[#4CC9F0] to-[#4895EF]', icon: 'architecture' },
+];
+
+function decorateCarouselRow(job, idx) {
+  const meta = CAROUSEL_META[idx % CAROUSEL_META.length];
+  return {
+    id: job.id,
+    title: job.title || 'Role',
+    company: job.company_name || 'Company',
+    department: job.department || '—',
+    employmentType: job.employment_type || '—',
+    matchReason:
+      job.description?.trim() ||
+      `Details for ${job.title || 'this role'} at ${job.company_name || 'the team'}.`,
+    featured: idx === 0,
+    color: meta.color,
+    icon: meta.icon,
+    insightLabel: job.title || 'Role',
+    insightText:
+      job.description?.trim() ||
+      'Explore this opening and apply to start your interview journey.',
+  };
+}
 
 const JobMarketplace = () => {
   const scrollRef = useRef(null);
   const cardRefs = useRef([]);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const navigate = useNavigate();
 
-  const aiRecommendedJobs = [
-    {
-      id: 1,
-      title: 'Senior Data Engineer',
-      company: 'Fintech Nusantara',
-      score: 90,
-      matchReason: "Your background in building financial pipelines at Stripe makes you perfect for Nusantara's internal architectural lead for their data mesh initiative.",
-      featured: true,
-      color: 'from-primary to-[#0038a8]',
-      icon: 'bolt',
-      insightLabel: 'High Priority Fit: Senior Data Engineer',
-      insightText: 'Because of your recent work with Stripe and high-velocity financial systems, you are the ideal candidate for Nusantara\'s ledger scaling project.'
-    },
-    {
-      id: 2,
-      title: 'Frontend Developer',
-      company: 'Digital Agency Kreatif',
-      score: 80,
-      matchReason: "Your React.js and Next.js experience is highly relevant to this scale. Your previous complex web projects demonstrate high-quality frontend skills.",
-      featured: false,
-      color: 'from-[#4361EE] to-[#3F37C9]',
-      icon: 'code',
-      insightLabel: 'Strong Talent Match: Frontend Developer',
-      insightText: 'Your specialized experience in high-fidelity design implementation at Vercel aligns perfectly with Kreatif\'s "Precision First" development cycle.'
-    },
-    {
-      id: 3,
-      title: 'Product Designer',
-      company: 'Kuantum Labs',
-      score: 95,
-      matchReason: "Exceptional match for your editorial design system experience. Your focus on tonal branding aligns with our 'Precision' philosophy.",
-      featured: false,
-      color: 'from-[#7209B7] to-[#560BAD]',
-      icon: 'palette',
-      insightLabel: 'Elite Design Fit: Product Designer',
-      insightText: 'Your unique portfolio in editorial SaaS systems makes you a top 1% candidate for Kuantum\'s new visual identity roadmap.'
-    },
-    {
-      id: 4,
-      title: 'Senior Solutions Architect',
-      company: 'TechFlow Systems',
-      score: 85,
-      matchReason: "Your background with distributed systems and enterprise infrastructure makes you a strong technical lead candidate for this scale.",
-      featured: false,
-      color: 'from-[#4CC9F0] to-[#4895EF]',
-      icon: 'architecture',
-      insightLabel: 'Infrastructure Expert: Solutions Architect',
-      insightText: 'Your deep architectural knowledge of AWS and distributed microservices makes you the perfect lead for TechFlow\'s global expansion.'
-    }
-  ];
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await fetchPublicJobs();
+        if (!cancelled) {
+          setJobs(rows);
+          setActiveIndex(0);
+        }
+      } catch (e) {
+        if (!cancelled) setLoadError(e instanceof Error ? e.message : 'Failed to load jobs');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const recentJobs = [
-    {
-      id: 101,
-      title: 'Sales Manager',
-      company: 'Kuantum',
-      location: 'Remote',
-      type: 'Full-time',
-      salary: '$140k - $180k',
-      description: 'Lead our global sales initiatives, defining precision-driven strategies for enterprise expansion.',
-      logo: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCFQyvS1blstOG4JqzcsweVrLmJTm7he1DTQzVumKrPgn_H1NmdDHe0vQPLjgSUyjV22hmzLFT_m1_SECRXT5rkpOyWrVc7XZRtjrgcVaxzq_GLf4FjXPPMdmA6b52LiEMGTMu1yl7cRsbd_N8BAV40y1VzOpCk_y-I0imhJgBr8kJIlPgPRuJ7lApz7xIbJbss6l2tVDdgEnl6Xk_qRTGkLyBu8hhGlhpp8LFVg3iBzAi9K6qxxfUTQWzFFmPbcYcQx2qGWiLb4RoT',
-    },
-    {
-      id: 102,
-      title: 'Senior Software Engineer (AI)',
-      company: 'Kuantum',
-      location: 'New York / Hybrid',
-      type: 'Full-time',
-      salary: '$160k - $220k',
-      hot: true,
-      description: 'Scale our core inference engines. Experience with Rust and high-performance distributed systems required.',
-      icon: 'code'
-    },
-    {
-      id: 103,
-      title: 'Product Designer',
-      company: 'Kuantum Labs',
-      location: 'Remote',
-      type: 'Full-time',
-      salary: '$130k - $170k',
-      description: 'Shape the future of editorial hiring. Focus on craft, intentional asymmetry, and tonal design systems.',
-      icon: 'palette'
-    }
-  ];
+  const aiRecommendedJobs = useMemo(() => jobs.slice(0, 4).map(decorateCarouselRow), [jobs]);
+  const recentJobs = useMemo(
+    () =>
+      jobs.map((j) => ({
+        id: j.id,
+        title: j.title || 'Role',
+        company: j.company_name || 'Company',
+        location: '—',
+        type: j.employment_type || '—',
+        salary: '—',
+        description: j.description?.trim() || 'No description yet.',
+        icon: 'work',
+        hot: false,
+      })),
+    [jobs]
+  );
 
   // Logic to handle career selection and centering
   const selectJob = (index) => {
@@ -106,12 +90,16 @@ const JobMarketplace = () => {
   };
 
   const handleNext = () => {
-    const nextIndex = (activeIndex + 1) % aiRecommendedJobs.length;
+    const len = aiRecommendedJobs.length;
+    if (!len) return;
+    const nextIndex = (activeIndex + 1) % len;
     selectJob(nextIndex);
   };
 
   const handlePrev = () => {
-    const prevIndex = (activeIndex - 1 + aiRecommendedJobs.length) % aiRecommendedJobs.length;
+    const len = aiRecommendedJobs.length;
+    if (!len) return;
+    const prevIndex = (activeIndex - 1 + len) % len;
     selectJob(prevIndex);
   };
 
@@ -125,6 +113,12 @@ const JobMarketplace = () => {
             <p className="text-on-surface-variant text-sm max-w-lg font-medium opacity-70">
               Join Kuantum in building the next generation of precision-engineered talent solutions.
             </p>
+            {loadError && (
+              <p className="mt-2 text-sm font-bold text-error">{loadError}</p>
+            )}
+            {loading && !loadError && (
+              <p className="mt-2 text-sm font-bold text-on-surface-variant">Loading openings…</p>
+            )}
           </div>
           <div className="flex items-center bg-surface-container-low border border-outline-variant/15 px-4 py-2 rounded-xl text-sm font-bold shadow-sm transition-all hover:bg-surface-container-high cursor-pointer">
             <span className="text-on-surface-variant mr-3 uppercase tracking-widest text-[10px] font-black opacity-60">Sort by:</span>
@@ -142,7 +136,6 @@ const JobMarketplace = () => {
             <div className="flex items-center gap-3">
               <span className="material-symbols-outlined text-primary text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
               <h2 className="text-xl font-black text-on-surface tracking-tight italic">AI-Curated For You</h2>
-              <span className="bg-primary-container/10 text-primary text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-[0.3em] ml-2 animate-pulse">Live Optimization</span>
             </div>
             <div className="flex gap-3">
               <button 
@@ -164,6 +157,9 @@ const JobMarketplace = () => {
             ref={scrollRef}
             className="no-scrollbar flex gap-8 overflow-x-auto pb-12 snap-x px-[10%] xl:px-[20%]"
           >
+            {!loading && aiRecommendedJobs.length === 0 && !loadError && (
+              <p className="text-sm font-bold text-on-surface-variant px-4">No open roles yet. Recruiters can post jobs from the HR app.</p>
+            )}
             {aiRecommendedJobs.map((job, idx) => (
               <div 
                 key={job.id} 
@@ -187,7 +183,7 @@ const JobMarketplace = () => {
                     <div className="space-y-2">
                        <span className={`text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-[0.3em] backdrop-blur-md mb-4 inline-block shadow-lg
                         ${activeIndex === idx ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'}`}>
-                        {idx === 0 ? 'Top Priority' : `Candidate Match #${idx + 1}`}
+                        {idx === 0 ? 'Open role' : `Opening ${idx + 1}`}
                       </span>
                       <h3 className={`text-3xl font-black leading-tight tracking-tight uppercase italic ${activeIndex === idx ? 'text-white' : 'text-on-surface'}`}>
                         {job.title}
@@ -197,26 +193,15 @@ const JobMarketplace = () => {
                       </p>
                     </div>
                     
-                    {/* SVG Match Progress */}
-                    <div className="relative w-24 h-24 flex items-center justify-center">
-                       <svg className="w-full h-full transform -rotate-90">
-                        <circle 
-                          className={`${activeIndex === idx ? 'text-white/10' : 'text-surface-container'}`} 
-                          cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="6" fill="transparent" 
-                        />
-                        <circle 
-                          className={`${activeIndex === idx ? 'text-white' : 'text-primary'}`} 
-                          cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="6" fill="transparent" 
-                          strokeDasharray="251.2" 
-                          strokeDashoffset={251.2 * (1 - job.score / 100)}
-                          strokeLinecap="round"
-                          style={{ transition: 'stroke-dashoffset 1.5s ease-in-out' }}
-                        />
-                      </svg>
-                      <div className="absolute flex flex-col items-center">
-                        <span className={`text-2xl font-black ${activeIndex === idx ? 'text-white' : 'text-on-surface'}`}>{job.score}%</span>
-                        <span className={`text-[8px] font-black uppercase tracking-widest opacity-60 ${activeIndex === idx ? 'text-white' : 'text-on-surface-variant'}`}>Alignment</span>
-                      </div>
+                    <div
+                      className={`w-24 h-24 rounded-3xl flex flex-col items-center justify-center border-2 ${
+                        activeIndex === idx ? 'border-white/40 bg-white/10 text-white' : 'border-outline-variant/20 bg-surface-container-low text-on-surface'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-3xl mb-1">work</span>
+                      <span className={`text-[8px] font-black uppercase tracking-widest opacity-80 text-center px-1 leading-tight`}>
+                        {job.department}
+                      </span>
                     </div>
                   </div>
 
@@ -257,7 +242,7 @@ const JobMarketplace = () => {
         {/* Dynamic AI Insight Banner (Synchronized with Carousel) */}
         <div 
           className="relative overflow-hidden bg-tertiary-fixed rounded-[4rem] p-12 shadow-2xl shadow-tertiary/20 border border-tertiary-fixed-dim/20 transition-all duration-700 group"
-          key={activeIndex} // Force re-render for animation
+          key={aiRecommendedJobs.length ? activeIndex : 'empty'} // Force re-render for animation
         >
           <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none group-hover:scale-110 group-hover:rotate-12 transition-transform duration-[2000ms]">
             <span className="material-symbols-outlined text-[160px] animate-pulse" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
@@ -270,17 +255,19 @@ const JobMarketplace = () => {
               <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4">
                 <span className="bg-tertiary-container text-white text-[10px] font-black px-5 py-2 rounded-full uppercase tracking-[0.4em] shadow-2xl shadow-tertiary/30">AI Insight Match</span>
                 <h4 className="font-black text-on-tertiary-fixed text-4xl italic tracking-tighter uppercase leading-none">
-                  {aiRecommendedJobs[activeIndex].insightLabel}
+                  {aiRecommendedJobs[activeIndex]?.insightLabel ?? 'No roles loaded'}
                 </h4>
               </div>
               <p className="text-on-tertiary-fixed-variant text-lg leading-relaxed max-w-4xl font-black opacity-80 tracking-tighter uppercase italic text-shadow">
-                {aiRecommendedJobs[activeIndex].insightText}
+                {aiRecommendedJobs[activeIndex]?.insightText ?? 'Check back once jobs are published.'}
               </p>
             </div>
             <div className="lg:ml-auto">
                <button 
-                onClick={() => navigate(`/seeker/apply/${aiRecommendedJobs[activeIndex].id}`)}
-                className="bg-on-surface text-surface px-12 py-6 rounded-[2.5rem] font-black text-[12px] uppercase tracking-[0.3em] shadow-2xl hover:scale-[1.05] active:scale-95 transition-all whitespace-nowrap"
+                type="button"
+                disabled={!aiRecommendedJobs[activeIndex]}
+                onClick={() => aiRecommendedJobs[activeIndex] && navigate(`/seeker/apply/${aiRecommendedJobs[activeIndex].id}`)}
+                className="bg-on-surface text-surface px-12 py-6 rounded-[2.5rem] font-black text-[12px] uppercase tracking-[0.3em] shadow-2xl hover:scale-[1.05] active:scale-95 transition-all whitespace-nowrap disabled:opacity-40"
               >
                 Fast-Track Prep
               </button>
@@ -296,6 +283,9 @@ const JobMarketplace = () => {
           </div>
           
           <div className="grid gap-6">
+            {!loading && recentJobs.length === 0 && !loadError && (
+              <p className="text-sm font-bold text-on-surface-variant px-2">No listings to show.</p>
+            )}
             {recentJobs.map((job) => (
               <div key={job.id} className="group bg-surface-container-lowest p-12 rounded-[3.5rem] transition-all hover:bg-surface-bright flex flex-col xl:flex-row xl:items-center justify-between gap-10 border border-outline-variant/10 shadow-sm hover:shadow-[0_45px_100px_-20px_rgba(0,0,0,0.06)] relative overflow-hidden active:scale-[0.99]">
                 <div className="flex items-start gap-10">

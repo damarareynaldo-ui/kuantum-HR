@@ -1,13 +1,40 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { fetchPublicJobs } from '../lib/publicJobsApi.js';
+import { fetchCandidates, inviteCandidateToJob } from '../lib/hrApi.js';
 
 const Invite = () => {
-  const candidates = [
-    { name: 'Alexia Sterling', email: 'alexia.s@outlook.com', status: 'Invited', initials: 'AS', color: 'bg-primary/10 text-primary', date: '2 mins ago' },
-    { name: 'David Helm', email: 'd.helm@techcorp.io', status: 'Opened', initials: 'DH', color: 'bg-tertiary/10 text-tertiary', date: '1 hour ago' },
-    { name: 'Jordan Nguyen', email: 'j.nguyen@vortex.dev', status: 'Completed', initials: 'JN', color: 'bg-on-surface-variant/10 text-on-surface-variant', date: 'Yesterday' },
-  ];
+  const [candidateName, setCandidateName] = React.useState('');
+  const [candidateEmail, setCandidateEmail] = React.useState('');
+  const [jobId, setJobId] = React.useState('');
+  const [jobs, setJobs] = React.useState([]);
+  const [candidates, setCandidates] = React.useState([]);
+  const [error, setError] = React.useState('');
+  const [submitting, setSubmitting] = React.useState(false);
+
+  const reload = React.useCallback(async () => {
+    const rows = await fetchCandidates();
+    setCandidates(rows);
+  }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const j = await fetchPublicJobs();
+        if (cancelled) return;
+        setJobs(j);
+        setJobId(j[0]?.id || '');
+        await reload();
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load page');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [reload]);
 
   return (
     <Layout>
@@ -26,7 +53,7 @@ const Invite = () => {
              <Link to="/candidates" className="px-8 py-4 bg-surface-container-low text-on-surface font-black rounded-2xl hover:bg-surface-dim transition-all text-sm uppercase tracking-widest active:scale-95">
               Back to Hub
             </Link>
-            <button className="px-8 py-4 bg-primary text-white font-black rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-sm uppercase tracking-widest flex items-center gap-2">
+            <button type="button" className="px-8 py-4 bg-primary text-white font-black rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-sm uppercase tracking-widest flex items-center gap-2">
               <span className="material-symbols-outlined text-lg">upload_file</span>
               Bulk CSV Import
             </button>
@@ -44,36 +71,63 @@ const Invite = () => {
               </div>
               <h3 className="text-2xl font-black text-on-surface tracking-tight mb-2">New Invitation</h3>
               <p className="text-sm text-on-surface-variant font-medium opacity-70 mb-10 leading-relaxed">
-                Add candidate details to initiate the AI assessment journey.
+                Mendaftarkan kandidat ke lowongan (lamaran). Setelah itu, buka detail lowongan untuk membuat sesi wawancara AI dan kode akses.
               </p>
               
               <div className="space-y-6 font-sans">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant px-1">Candidate Name</label>
-                  <input className="w-full bg-surface-container-low border-none rounded-2xl px-6 py-4 focus:ring-4 focus:ring-primary/10 text-on-surface transition-all font-bold placeholder:text-on-surface-variant/40" placeholder="e.g. Marcus Aurelius" type="text" />
+                  <input className="w-full bg-surface-container-low border-none rounded-2xl px-6 py-4 focus:ring-4 focus:ring-primary/10 text-on-surface transition-all font-bold placeholder:text-on-surface-variant/40" placeholder="e.g. Marcus Aurelius" type="text" value={candidateName} onChange={(e) => setCandidateName(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant px-1">Email Address</label>
-                  <input className="w-full bg-surface-container-low border-none rounded-2xl px-6 py-4 focus:ring-4 focus:ring-primary/10 text-on-surface transition-all font-bold placeholder:text-on-surface-variant/40" placeholder="marcus@talent-ai.com" type="email" />
+                  <input className="w-full bg-surface-container-low border-none rounded-2xl px-6 py-4 focus:ring-4 focus:ring-primary/10 text-on-surface transition-all font-bold placeholder:text-on-surface-variant/40" placeholder="marcus@talent-ai.com" type="email" value={candidateEmail} onChange={(e) => setCandidateEmail(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant px-1">Target Requisition</label>
-                  <select className="w-full bg-surface-container-low border-none rounded-2xl px-6 py-4 focus:ring-4 focus:ring-primary/10 text-on-surface transition-all font-bold cursor-pointer appearance-none">
-                    <option>Sales Manager at Kuantum</option>
-                    <option>Senior Software Engineer (AI)</option>
-                    <option>Product Designer</option>
-                    <option>Staff Engineer</option>
+                  <select className="w-full bg-surface-container-low border-none rounded-2xl px-6 py-4 focus:ring-4 focus:ring-primary/10 text-on-surface transition-all font-bold cursor-pointer appearance-none" value={jobId} onChange={(e) => setJobId(e.target.value)}>
+                    {jobs.map((j) => (
+                      <option key={j.id} value={j.id}>
+                        {j.title}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
             </div>
 
-            <button 
-              onClick={() => { alert('Invitation sequence initiated.'); }}
+            <button
+              onClick={async () => {
+                try {
+                  setError('');
+                  setSubmitting(true);
+                  await inviteCandidateToJob({
+                    name: candidateName.trim(),
+                    email: candidateEmail.trim().toLowerCase(),
+                    jobId,
+                  });
+                  setCandidateName('');
+                  setCandidateEmail('');
+                  await reload();
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : 'Failed to invite candidate');
+                } finally {
+                  setSubmitting(false);
+                }
+              }}
+              disabled={submitting}
               className="mt-12 w-full signature-gradient text-white py-5 rounded-[1.8rem] font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-primary/30 hover:scale-[1.02] transition-all active:scale-95"
             >
-              Dispatch Invite
+              {submitting ? 'Menyimpan...' : 'Tambah ke lamaran'}
             </button>
+            {jobId ? (
+              <Link
+                to={`/jobs/${jobId}`}
+                className="mt-6 block text-center text-xs font-black text-primary uppercase tracking-widest hover:underline"
+              >
+                Kelola pelamar &amp; buat sesi wawancara →
+              </Link>
+            ) : null}
           </div>
 
           {/* Table Area - Invite Queue */}
@@ -103,7 +157,7 @@ const Invite = () => {
                     <tr key={i} className="hover:bg-white/40 transition-colors group">
                       <td className="px-10 py-6">
                         <div className="flex items-center gap-5">
-                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-sm shadow-sm group-hover:scale-105 transition-transform ${c.color}`}>{c.initials}</div>
+                          <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-sm shadow-sm group-hover:scale-105 transition-transform bg-primary/10 text-primary">{String(c.name || '?').slice(0, 2).toUpperCase()}</div>
                           <div>
                             <div className="font-black text-on-surface text-base tracking-tight">{c.name}</div>
                             <div className="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest opacity-40">{c.email}</div>
@@ -112,20 +166,20 @@ const Invite = () => {
                       </td>
                       <td className="px-8 py-6">
                         <span className={`inline-flex items-center px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider ${
-                          c.status === 'Completed' ? 'bg-emerald-50 text-emerald-700' : 
-                          c.status === 'Opened' ? 'bg-tertiary-fixed text-tertiary shadow-lg shadow-tertiary/10' :
+                          c.status === 'Completed' ? 'bg-emerald-50 text-emerald-700' :
+                          c.status === 'In Progress' ? 'bg-tertiary-fixed text-tertiary shadow-lg shadow-tertiary/10' :
                           'bg-primary-fixed text-primary'
                         }`}>
                           <span className={`w-1.5 h-1.5 rounded-full mr-2 ${
-                            c.status === 'Completed' ? 'bg-emerald-500' : 
-                            c.status === 'Opened' ? 'bg-tertiary' :
+                            c.status === 'Completed' ? 'bg-emerald-500' :
+                            c.status === 'In Progress' ? 'bg-tertiary' :
                             'bg-primary'
                           } animate-pulse`}></span>
                           {c.status}
                         </span>
                       </td>
                       <td className="px-8 py-6 text-on-surface-variant text-[11px] font-black uppercase tracking-widest opacity-40">
-                        {c.date}
+                        {c.date || ''}
                       </td>
                       <td className="px-10 py-6 text-right">
                         <button className="text-primary font-black text-[10px] uppercase tracking-widest hover:underline flex items-center justify-end gap-1 ml-auto group-hover:gap-2 transition-all">
@@ -145,6 +199,8 @@ const Invite = () => {
           </div>
         </div>
         
+        {error && <p className="text-sm font-bold text-error">{error}</p>}
+
         {/* Support Card */}
         <div className="bg-surface-container-low p-10 rounded-[2.8rem] border border-outline-variant/10 shadow-sm flex items-center justify-between group">
            <div className="flex items-center gap-8">
