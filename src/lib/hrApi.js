@@ -72,6 +72,21 @@ export async function fetchExternalInterviewResult(applicationId) {
 }
 
 /**
+ * HR AI Analyzer — GET `/result/cv-employer/:applicationId` (job_applicants.id).
+ * Returns `null` when no CV analysis exists (404).
+ */
+export async function fetchCvEmployerResult(applicationId) {
+  const base = getHrAiAnalyzerBaseUrl();
+  const res = await fetch(`${base}/result/cv-employer/${encodeURIComponent(applicationId)}`);
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(data?.error || data?.message || `CV employer result failed (${res.status})`);
+  }
+  return data;
+}
+
+/**
  * HR AI Analyzer — POST `/analyze-cv-employer` (multipart).
  * Fields: applicationId, jobId, jobTitle, jobRequirements, jobIndustry, cvFile
  */

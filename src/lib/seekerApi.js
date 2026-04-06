@@ -86,6 +86,24 @@ export async function getMyApplicationById(applicationId) {
   });
 }
 
+/**
+ * GET /api/applications/:applicationId/recommend-jobs — sessionId, jobId, userId + HR AI recommendations.
+ * @param {string} applicationId - UUID lamaran (job_applicants.id)
+ * @param {{ hrApplicationId?: string }} [opts] - Override id untuk analyzer (mis. APP-SEEKER-001)
+ */
+export async function fetchJobRecommendations(applicationId, opts = {}) {
+  const userId = await getOrCreateSeekerUserId();
+  const q = new URLSearchParams();
+  if (opts.hrApplicationId) {
+    q.set('hrApplicationId', String(opts.hrApplicationId));
+  }
+  const qs = q.toString();
+  const path = `/api/applications/${encodeURIComponent(applicationId)}/recommend-jobs${qs ? `?${qs}` : ''}`;
+  return api(path, {
+    headers: { 'X-User-Id': userId },
+  });
+}
+
 /** GET /api/applications/:id/active-session — sesi aktif (invited/in_progress) + URL eksternal / kode */
 export async function getActiveSessionForApplication(applicationId) {
   const userId = await getOrCreateSeekerUserId();

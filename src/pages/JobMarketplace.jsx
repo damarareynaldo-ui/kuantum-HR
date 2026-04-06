@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import SeekerLayout from '../components/SeekerLayout';
 import { fetchPublicJobs } from '../lib/publicJobsApi.js';
+import { getMyApplications, fetchJobRecommendations } from '../lib/seekerApi.js';
 
 const CAROUSEL_META = [
   { color: 'from-primary to-[#0038a8]', icon: 'bolt' },
@@ -28,6 +29,41 @@ function decorateCarouselRow(job, idx) {
     insightText:
       job.description?.trim() ||
       'Explore this opening and apply to start your interview journey.',
+    navigateJobId: job.id,
+  };
+}
+
+/** HR AI `data.recommendations[]` → carousel row (match ke listing publik jika ada). */
+function mapAnalyzerRecommendationToCarousel(rec, idx, publicJobs) {
+  const meta = CAROUSEL_META[idx % CAROUSEL_META.length];
+  const title = (rec.job_title || 'Role').trim();
+  const company = (rec.company || 'Company').trim();
+  const why = (rec.why_it_fits || '').trim();
+  const improve = (rec.what_to_improve || '').trim();
+  const t = title.toLowerCase();
+  const c = company.toLowerCase();
+  const linked = Array.isArray(publicJobs)
+    ? publicJobs.find(
+        (j) =>
+          (j.title || '').trim().toLowerCase() === t &&
+          (j.company_name || '').trim().toLowerCase() === c
+      )
+    : null;
+  const navigateJobId = linked?.id ?? null;
+  return {
+    id: navigateJobId || `ai-rec-${idx}-${t.slice(0, 24)}`,
+    title,
+    company,
+    department: (rec.industry || '—').trim() || '—',
+    employmentType: '—',
+    matchReason: why || improve || `Match score ${rec.match_score ?? '—'}%`,
+    featured: idx === 0,
+    color: meta.color,
+    icon: meta.icon,
+    insightLabel: title,
+    insightText: improve || why || 'Explore roles that fit your profile.',
+    navigateJobId,
+    matchScore: rec.match_score,
   };
 }
 
@@ -38,6 +74,8 @@ const JobMarketplace = () => {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [analyzerRecs, setAnalyzerRecs] = useState(null);
+  const [aiRecLoading, setAiRecLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -60,7 +98,50 @@ const JobMarketplace = () => {
     };
   }, []);
 
-  const aiRecommendedJobs = useMemo(() => jobs.slice(0, 4).map(decorateCarouselRow), [jobs]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setAiRecLoading(true);
+      try {
+        const envAppId = import.meta.env.VITE_JOB_RECOMMENDATIONS_APPLICATION_ID;
+        const apps = await getMyApplications();
+        const applicationId =
+          (typeof envAppId === 'string' && envAppId.trim()) || (Array.isArray(apps) && apps[0]?.id);
+        if (!applicationId) {
+          if (!cancelled) {
+            setAnalyzerRecs(null);
+            setAiRecLoading(false);
+          }
+          return;
+        }
+        const externalId = import.meta.env.VITE_HR_ANALYZER_EXTERNAL_APP_ID;
+        const payload = await fetchJobRecommendations(applicationId, {
+          hrApplicationId:
+            typeof externalId === 'string' && externalId.trim() ? externalId.trim() : undefined,
+        });
+        const list = payload?.data?.recommendations;
+        if (!cancelled && Array.isArray(list) && list.length > 0) {
+          setAnalyzerRecs(list);
+        } else if (!cancelled) {
+          setAnalyzerRecs(null);
+        }
+      } catch {
+        if (!cancelled) setAnalyzerRecs(null);
+      } finally {
+        if (!cancelled) setAiRecLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const aiRecommendedJobs = useMemo(() => {
+    if (Array.isArray(analyzerRecs) && analyzerRecs.length > 0) {
+      return analyzerRecs.map((rec, idx) => mapAnalyzerRecommendationToCarousel(rec, idx, jobs));
+    }
+    return jobs.slice(0, 4).map(decorateCarouselRow);
+  }, [jobs, analyzerRecs]);
   const recentJobs = useMemo(
     () =>
       jobs.map((j) => ({
@@ -157,7 +238,7 @@ const JobMarketplace = () => {
             ref={scrollRef}
             className="no-scrollbar flex gap-8 overflow-x-auto pb-12 snap-x px-[10%] xl:px-[20%]"
           >
-            {!loading && aiRecommendedJobs.length === 0 && !loadError && (
+            {!loading && !aiRecLoading && aiRecommendedJobs.length === 0 && !loadError && (
               <p className="text-sm font-bold text-on-surface-variant px-4">No open roles yet. Recruiters can post jobs from the HR app.</p>
             )}
             {aiRecommendedJobs.map((job, idx) => (
@@ -222,13 +303,21 @@ const JobMarketplace = () => {
                   ${activeIndex === idx ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}
                 >
                   <button 
-                    onClick={() => navigate(`/seeker/job/${job.id}`)}
+                    onClick={() =>
+                      job.navigateJobId
+                        ? navigate(`/seeker/job/${job.navigateJobId}`)
+                        : navigate('/seeker')
+                    }
                     className={`flex-1 py-5 rounded-2xl text-[11px] font-black uppercase tracking-[0.3em] border transition-all active:scale-95
                     ${activeIndex === idx ? 'bg-white/10 text-white border-white/20 hover:bg-white/20' : 'hidden'}`}>
                     Details
                   </button>
                   <button 
-                    onClick={() => navigate(`/seeker/apply/${job.id}`)}
+                    onClick={() =>
+                      job.navigateJobId
+                        ? navigate(`/seeker/apply/${job.navigateJobId}`)
+                        : navigate('/seeker')
+                    }
                     className={`flex-1 py-5 rounded-2xl text-[11px] font-black uppercase tracking-[0.3em] shadow-2xl transition-all active:scale-95
                     ${activeIndex === idx ? 'bg-white text-primary hover:scale-[1.03] shadow-white/10' : 'hidden'}`}>
                     Launch Application
@@ -266,7 +355,12 @@ const JobMarketplace = () => {
                <button 
                 type="button"
                 disabled={!aiRecommendedJobs[activeIndex]}
-                onClick={() => aiRecommendedJobs[activeIndex] && navigate(`/seeker/apply/${aiRecommendedJobs[activeIndex].id}`)}
+                onClick={() => {
+                  const j = aiRecommendedJobs[activeIndex];
+                  if (!j) return;
+                  if (j.navigateJobId) navigate(`/seeker/apply/${j.navigateJobId}`);
+                  else navigate('/seeker');
+                }}
                 className="bg-on-surface text-surface px-12 py-6 rounded-[2.5rem] font-black text-[12px] uppercase tracking-[0.3em] shadow-2xl hover:scale-[1.05] active:scale-95 transition-all whitespace-nowrap disabled:opacity-40"
               >
                 Fast-Track Prep

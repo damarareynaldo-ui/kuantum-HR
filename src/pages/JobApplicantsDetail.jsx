@@ -2,14 +2,81 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { getApiBaseUrl } from '../lib/apiBase.js';
+import { fetchCvEmployerResult } from '../lib/hrApi.js';
 import { fetchPublicJob } from '../lib/publicJobsApi.js';
 import { ensureRecruiterUserId, recruiterAuthHeaders } from '../lib/recruiterApi.js';
+
+function CvMatchCell({ entry }) {
+  if (!entry || entry.phase === 'loading') {
+    return (
+      <td className="px-10 py-8 align-top">
+        <span className="inline-block h-5 w-16 bg-on-surface-variant/10 rounded animate-pulse" />
+      </td>
+    );
+  }
+  if (entry.phase === 'error') {
+    return (
+      <td className="px-10 py-8 align-top text-xs text-on-surface-variant/60 font-medium">
+        —
+      </td>
+    );
+  }
+  const p = entry.payload;
+  if (!p) {
+    return (
+      <td className="px-10 py-8 align-top text-xs text-on-surface-variant font-medium max-w-[220px]">
+        Belum ada analisis CV
+      </td>
+    );
+  }
+  if (p.status && p.status !== 'COMPLETED') {
+    return (
+      <td className="px-10 py-8 align-top text-xs font-bold text-amber-800">
+        {String(p.status)}
+      </td>
+    );
+  }
+  const d = p.data;
+  if (!d || typeof d !== 'object') {
+    return (
+      <td className="px-10 py-8 align-top text-xs text-on-surface-variant">—</td>
+    );
+  }
+  const score = d.match_score;
+  const recommendation = d.recommendation;
+  const recStr = String(recommendation || '');
+  const isNegative = /tidak\s*lanjut/i.test(recStr) || /^tidak\b/i.test(recStr.trim());
+
+  return (
+    <td className="px-10 py-8 align-top max-w-[260px]">
+      <div className="flex flex-col gap-1.5">
+        {typeof score === 'number' && (
+          <span className="text-xl font-black text-on-surface tabular-nums leading-none">{score}%</span>
+        )}
+        {recommendation && (
+          <span
+            title={typeof d.ai_reason === 'string' ? d.ai_reason : undefined}
+            className={`inline-flex self-start px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wide border ${
+              isNegative
+                ? 'bg-amber-50 text-amber-900 border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-100 dark:border-amber-800/50'
+                : 'bg-emerald-50 text-emerald-900 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-100 dark:border-emerald-800/50'
+            }`}
+          >
+            {recommendation}
+          </span>
+        )}
+        {!recommendation && typeof score !== 'number' && <span className="text-xs text-on-surface-variant">—</span>}
+      </div>
+    </td>
+  );
+}
 
 const JobApplicantsDetail = () => {
   const { id } = useParams();
   const apiBase = getApiBaseUrl();
   const [job, setJob] = useState(null);
   const [applicants, setApplicants] = useState([]);
+  const [cvMatchByApplicationId, setCvMatchByApplicationId] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -51,6 +118,36 @@ const JobApplicantsDetail = () => {
       cancelled = true;
     };
   }, [apiBase, id]);
+
+  useEffect(() => {
+    if (applicants.length === 0) {
+      setCvMatchByApplicationId({});
+      return;
+    }
+    let cancelled = false;
+    const ids = applicants.map((a) => String(a.id));
+    setCvMatchByApplicationId(Object.fromEntries(ids.map((aid) => [aid, { phase: 'loading' }])));
+
+    (async () => {
+      const entries = await Promise.all(
+        ids.map(async (aid) => {
+          try {
+            const payload = await fetchCvEmployerResult(aid);
+            return [aid, { phase: 'done', payload }];
+          } catch {
+            return [aid, { phase: 'error' }];
+          }
+        }),
+      );
+      if (!cancelled) {
+        setCvMatchByApplicationId(Object.fromEntries(entries));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applicants]);
 
   const title = job?.title || 'Job';
   const department = job?.department || '—';
@@ -119,6 +216,7 @@ const JobApplicantsDetail = () => {
             <thead className="bg-surface-container-low/50">
               <tr className="text-[10px] font-black text-on-surface-variant/40 uppercase tracking-[0.2em] border-b border-outline-variant/5">
                 <th className="px-10 py-6">Kandidat</th>
+                <th className="px-10 py-6">Match result</th>
                 <th className="px-10 py-6">Sesi</th>
                 <th className="px-10 py-6 text-right">Aksi</th>
               </tr>
@@ -126,7 +224,7 @@ const JobApplicantsDetail = () => {
             <tbody className="divide-y divide-outline-variant/5">
               {applicants.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={3} className="px-10 py-12 text-center text-on-surface-variant font-bold">
+                  <td colSpan={4} className="px-10 py-12 text-center text-on-surface-variant font-bold">
                     Belum ada pelamar. Bagikan lowongan ke pasar kerja (job seeker).
                   </td>
                 </tr>
@@ -150,6 +248,7 @@ const JobApplicantsDetail = () => {
                         </div>
                       </div>
                     </td>
+                    <CvMatchCell entry={cvMatchByApplicationId[String(applicant.id)]} />
                     <td className="px-10 py-8 text-sm text-on-surface-variant font-medium">
                       {hasSession ? (
                         <span className="text-emerald-700 font-bold">Aktif · {String(sid).slice(0, 8)}…</span>
