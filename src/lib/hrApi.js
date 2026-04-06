@@ -20,6 +20,27 @@ export async function fetchCandidates() {
   return Array.isArray(data) ? data : [];
 }
 
+/**
+ * GET /api/interviews — paginasi server-side.
+ * @param {{ completedOnly?: boolean, page?: number, pageSize?: number }} opts
+ * @returns {Promise<{ items: unknown[], total: number, page: number, pageSize: number, totalPages: number }>}
+ */
+export async function fetchInterviewList({ completedOnly = false, page = 1, pageSize = 10 } = {}) {
+  const base = getApiBaseUrl();
+  const params = new URLSearchParams();
+  if (completedOnly) params.set('status', 'completed');
+  params.set('page', String(page));
+  params.set('pageSize', String(pageSize));
+  const data = await parseJson(await fetch(`${base}/api/interviews?${params.toString()}`));
+  return {
+    items: Array.isArray(data?.items) ? data.items : [],
+    total: typeof data?.total === 'number' ? data.total : 0,
+    page: typeof data?.page === 'number' ? data.page : page,
+    pageSize: typeof data?.pageSize === 'number' ? data.pageSize : pageSize,
+    totalPages: typeof data?.totalPages === 'number' ? data.totalPages : 0,
+  };
+}
+
 export async function fetchSessions() {
   const base = getApiBaseUrl();
   const data = await parseJson(await fetch(`${base}/api/sessions`));

@@ -1,23 +1,43 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { fetchCandidates } from '../lib/hrApi.js';
+import { fetchInterviewList } from '../lib/hrApi.js';
+
+const PAGE_SIZE = 10;
 
 const InterviewResultsList = () => {
   const navigate = useNavigate();
   const [results, setResults] = React.useState([]);
+  const [page, setPage] = React.useState(1);
+  const [total, setTotal] = React.useState(0);
+  const [totalPages, setTotalPages] = React.useState(0);
+  const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
-      const rows = await fetchCandidates().catch(() => []);
+      setLoading(true);
+      const res = await fetchInterviewList({ completedOnly: false, page, pageSize: PAGE_SIZE }).catch(() => ({
+        items: [],
+        total: 0,
+        page: 1,
+        pageSize: PAGE_SIZE,
+        totalPages: 0,
+      }));
       if (cancelled) return;
-      setResults(rows.filter((r) => String(r.status || '').toLowerCase().includes('completed')));
+      setResults(res.items);
+      setTotal(res.total);
+      setTotalPages(res.totalPages);
+      if (typeof res.page === 'number' && res.page !== page) setPage(res.page);
+      setLoading(false);
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [page]);
+
+  const rangeStart = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const rangeEnd = Math.min(page * PAGE_SIZE, total);
 
   return (
     <Layout>
@@ -38,7 +58,7 @@ const InterviewResultsList = () => {
           <div className="flex items-center gap-4">
             <div className="bg-surface-container-low px-6 py-4 rounded-[1.5rem] border border-outline-variant/5 shadow-sm">
                <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant opacity-40 mb-1">Active Pipeline</p>
-               <p className="text-xl font-black text-on-surface">48 Candidates</p>
+               <p className="text-xl font-black text-on-surface">{total} Interview{total === 1 ? '' : 's'}</p>
             </div>
           </div>
         </header>
@@ -85,7 +105,13 @@ const InterviewResultsList = () => {
           <div className="p-10 flex flex-col md:flex-row items-center justify-between gap-6 border-b border-outline-variant/5">
              <div>
                 <h3 className="text-2xl font-black text-on-surface tracking-tight">Candidate Performance</h3>
-                <p className="text-xs font-medium text-on-surface-variant opacity-50 uppercase tracking-widest mt-1">Showing 4 of 48 Recent Results</p>
+                <p className="text-xs font-medium text-on-surface-variant opacity-50 uppercase tracking-widest mt-1">
+                  {loading
+                    ? 'Loading…'
+                    : total === 0
+                      ? 'No interviews yet'
+                      : `Showing ${rangeStart}–${rangeEnd} of ${total}`}
+                </p>
              </div>
              <div className="flex items-center gap-4 bg-surface-container-low p-2 rounded-2xl w-full md:w-[400px]">
                 <div className="flex-1 flex items-center gap-3 px-4 py-2">
@@ -110,56 +136,90 @@ const InterviewResultsList = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/5">
-                {results.map((r, i) => (
-                  <tr 
-                    key={i} 
-                    onClick={() => navigate(`/results/detail?sessionId=${encodeURIComponent(String(r.id))}`)}
-                    className="hover:bg-primary/5 transition-all duration-300 cursor-pointer group"
-                  >
-                    <td className="px-10 py-8">
-                      <div className="flex items-center gap-5">
-                        <div className="relative">
-                          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center font-black text-sm shadow-md ring-4 ring-white text-primary">{String(r.name || '?').slice(0,2).toUpperCase()}</div>
-                        </div>
-                        <div>
-                          <div className="text-on-surface font-black text-lg tracking-tight group-hover:text-primary transition-colors">{r.name}</div>
-                          <div className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest opacity-40 mt-0.5">{r.job}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-8 py-8">
-                       <div className="flex items-center gap-4">
-                          <div className="w-32 h-2 bg-surface-container-low rounded-full overflow-hidden">
-                             <div className="h-full signature-gradient transition-all duration-1000" style={{ width: `${Number(String(r.score || '').replace('%','')) || 0}%` }}></div>
-                          </div>
-                          <span className="text-md font-black text-on-surface tracking-tighter">{r.score}</span>
-                       </div>
-                    </td>
-                    <td className="px-8 py-8">
-                      <span className={`px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest ${
-                        r.status === 'Completed' ? 'bg-tertiary-fixed text-tertiary shadow-lg shadow-tertiary/10' :
-                        r.status === 'In Progress' ? 'bg-primary-fixed text-primary' :
-                        'bg-surface-container-highest text-on-surface-variant opacity-60'
-                      }`}>
-                        {r.status}
-                      </span>
-                    </td>
-                    <td className="px-8 py-8 text-on-surface-variant text-[11px] font-black uppercase tracking-widest opacity-40">
-                      {r.date}
-                    </td>
-                    <td className="px-10 py-8 text-right">
-                       <button className="px-6 py-3 bg-white rounded-xl text-[10px] font-black uppercase tracking-widest text-on-surface-variant hover:text-primary transition-colors border border-outline-variant/10 shadow-sm">
-                          View Deep Analysis
-                       </button>
+                {loading ? (
+                  <tr>
+                    <td colSpan={5} className="px-10 py-16 text-center text-on-surface-variant text-sm font-bold">
+                      Loading interviews…
                     </td>
                   </tr>
-                ))}
+                ) : results.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-10 py-16 text-center text-on-surface-variant text-sm font-bold">
+                      No interviews in the pipeline yet.
+                    </td>
+                  </tr>
+                ) : (
+                  results.map((r) => (
+                    <tr 
+                      key={String(r.id)} 
+                      onClick={() => navigate(`/results/detail?sessionId=${encodeURIComponent(String(r.id))}`)}
+                      className="hover:bg-primary/5 transition-all duration-300 cursor-pointer group"
+                    >
+                      <td className="px-10 py-8">
+                        <div className="flex items-center gap-5">
+                          <div className="relative">
+                            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center font-black text-sm shadow-md ring-4 ring-white text-primary">{String(r.name || '?').slice(0,2).toUpperCase()}</div>
+                          </div>
+                          <div>
+                            <div className="text-on-surface font-black text-lg tracking-tight group-hover:text-primary transition-colors">{r.name}</div>
+                            <div className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest opacity-40 mt-0.5">{r.job}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-8 py-8">
+                         <div className="flex items-center gap-4">
+                            <div className="w-32 h-2 bg-surface-container-low rounded-full overflow-hidden">
+                               <div className="h-full signature-gradient transition-all duration-1000" style={{ width: `${Number(String(r.score || '').replace('%','')) || 0}%` }}></div>
+                            </div>
+                            <span className="text-md font-black text-on-surface tracking-tighter">{r.score}</span>
+                         </div>
+                      </td>
+                      <td className="px-8 py-8">
+                        <span className={`px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest ${
+                          r.status === 'Completed' ? 'bg-tertiary-fixed text-tertiary shadow-lg shadow-tertiary/10' :
+                          r.status === 'In Progress' ? 'bg-primary-fixed text-primary' :
+                          'bg-surface-container-highest text-on-surface-variant opacity-60'
+                        }`}>
+                          {r.status}
+                        </span>
+                      </td>
+                      <td className="px-8 py-8 text-on-surface-variant text-[11px] font-black uppercase tracking-widest opacity-40">
+                        {r.date}
+                      </td>
+                      <td className="px-10 py-8 text-right">
+                         <button type="button" className="px-6 py-3 bg-white rounded-xl text-[10px] font-black uppercase tracking-widest text-on-surface-variant hover:text-primary transition-colors border border-outline-variant/10 shadow-sm">
+                            View Deep Analysis
+                         </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
 
-          <div className="p-10 text-center bg-surface-container-low/20">
-             <button className="text-[11px] font-black text-primary uppercase tracking-[0.3em] hover:underline">Live from API</button>
+          <div className="p-10 flex flex-col sm:flex-row items-center justify-between gap-6 bg-surface-container-low/20 border-t border-outline-variant/5">
+            <p className="text-[11px] font-medium text-on-surface-variant opacity-60">
+              Page {totalPages === 0 ? 0 : page} of {totalPages}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={loading || page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest bg-white border border-outline-variant/15 text-on-surface-variant hover:text-primary disabled:opacity-40 disabled:pointer-events-none shadow-sm"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                disabled={loading || totalPages === 0 || page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+                className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest bg-primary text-on-primary hover:opacity-90 disabled:opacity-40 disabled:pointer-events-none shadow-sm"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
       </div>

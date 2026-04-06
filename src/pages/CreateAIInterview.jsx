@@ -83,7 +83,8 @@ const CreateAIInterview = () => {
           `${API_BASE_URL}/api/jobs/${form.jobId}/applications`,
           { headers: recruiterAuthHeaders(recruiterId) },
         );
-        if (!res.ok) throw new Error(`Failed to load applications (${res.status})`);
+        if (!res.ok)
+          throw new Error(`Failed to load applications (${res.status})`);
         const data = await res.json();
         if (cancelled) return;
         const rows = Array.isArray(data) ? data : [];
@@ -214,16 +215,35 @@ const CreateAIInterview = () => {
             <p className="text-emerald-800 text-sm font-black uppercase tracking-widest">
               Sesi dibuat — bagikan ke kandidat
             </p>
-            <p className="text-[10px] text-emerald-900 font-bold uppercase tracking-widest">Internal redirect</p>
-            <p className="text-xs text-emerald-700 font-bold break-all">{result.interviewUrl || "—"}</p>
-            <p className="text-[10px] text-emerald-900 font-bold uppercase tracking-widest">URL eksternal (jika dikonfigurasi di API)</p>
-            <p className="text-xs text-emerald-700 font-bold break-all">{result.externalInterviewUrl || "— (set EXTERNAL_INTERVIEW_REDIRECT_URL_TEMPLATE di backend)"}</p>
-            <p className="text-[10px] text-emerald-900 font-bold uppercase tracking-widest">Access code ID (untuk verifikasi / undangan)</p>
-            <p className="text-xs text-emerald-700 font-bold break-all">{result?.accessCode?.id || "—"}</p>
-            <p className="text-[10px] text-emerald-900 font-bold uppercase tracking-widest">Session code (pendek)</p>
-            <p className="text-xs text-emerald-700 font-bold break-all">{result?.accessCode?.sessionCode || "—"}</p>
+            <p className="text-[10px] text-emerald-900 font-bold uppercase tracking-widest">
+              Internal redirect
+            </p>
+            <p className="text-xs text-emerald-700 font-bold break-all">
+              {result.interviewUrl || "—"}
+            </p>
+            <p className="text-[10px] text-emerald-900 font-bold uppercase tracking-widest">
+              URL eksternal (jika dikonfigurasi di API)
+            </p>
+            <p className="text-xs text-emerald-700 font-bold break-all">
+              {result.externalInterviewUrl ||
+                "— (set EXTERNAL_INTERVIEW_REDIRECT_URL_TEMPLATE di backend)"}
+            </p>
+            <p className="text-[10px] text-emerald-900 font-bold uppercase tracking-widest">
+              Access code ID (untuk verifikasi / undangan)
+            </p>
+            <p className="text-xs text-emerald-700 font-bold break-all">
+              {result?.accessCode?.id || "—"}
+            </p>
+            <p className="text-[10px] text-emerald-900 font-bold uppercase tracking-widest">
+              Session code (pendek)
+            </p>
+            <p className="text-xs text-emerald-700 font-bold break-all">
+              {result?.accessCode?.sessionCode || "—"}
+            </p>
             <p className="text-[10px] text-emerald-800 font-medium leading-relaxed pt-2">
-              Kandidat bisa verifikasi kode di aplikasi: <span className="font-black">/seeker/interview/access</span> lalu melanjutkan ke ruang wawancara.
+              Kandidat bisa verifikasi kode di aplikasi:{" "}
+              <span className="font-black">/seeker/interview/access</span> lalu
+              melanjutkan ke ruang wawancara.
             </p>
           </div>
         ) : null}
@@ -320,8 +340,8 @@ const CreateAIInterview = () => {
                     ))}
                   </select>
                   <p className="text-[10px] text-on-surface-variant font-medium px-1 opacity-70">
-                    Only applications without an interview session are listed. Use
-                    GET /api/jobs/:jobId/applications to inspect all.
+                    Only applications without an interview session are listed.
+                    Use GET /api/jobs/:jobId/applications to inspect all.
                   </p>
                 </div>
               </div>
