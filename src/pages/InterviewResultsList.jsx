@@ -5,6 +5,13 @@ import { fetchInterviewList } from '../lib/hrApi.js';
 
 const PAGE_SIZE = 10;
 
+function resultsDetailPath(row) {
+  const q = new URLSearchParams();
+  if (row?.applicationId) q.set('applicationId', String(row.applicationId));
+  q.set('sessionId', String(row.id));
+  return `/results/detail?${q.toString()}`;
+}
+
 const InterviewResultsList = () => {
   const navigate = useNavigate();
   const [results, setResults] = React.useState([]);
@@ -64,7 +71,7 @@ const InterviewResultsList = () => {
         </header>
 
         {/* Featured Elite Talent Card */}
-        <div className="bg-tertiary-fixed p-10 rounded-[3rem] relative overflow-hidden shadow-2xl shadow-tertiary/10 group cursor-pointer" onClick={() => results[0] && navigate(`/results/detail?sessionId=${encodeURIComponent(String(results[0].id))}`)}>
+        <div className="bg-tertiary-fixed p-10 rounded-[3rem] relative overflow-hidden shadow-2xl shadow-tertiary/10 group cursor-pointer" onClick={() => results[0] && navigate(resultsDetailPath(results[0]))}>
           <div className="absolute top-0 right-0 w-80 h-80 bg-white/20 blur-[100px] -z-10 translate-x-1/4 -translate-y-1/3 group-hover:scale-150 transition-transform duration-1000"></div>
           
           <div className="flex flex-col lg:flex-row gap-12 items-center">
@@ -152,7 +159,7 @@ const InterviewResultsList = () => {
                   results.map((r) => (
                     <tr 
                       key={String(r.id)} 
-                      onClick={() => navigate(`/results/detail?sessionId=${encodeURIComponent(String(r.id))}`)}
+                      onClick={() => navigate(resultsDetailPath(r))}
                       className="hover:bg-primary/5 transition-all duration-300 cursor-pointer group"
                     >
                       <td className="px-10 py-8">

@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from './apiBase.js';
+import { getApiBaseUrl, getHrAiAnalyzerBaseUrl } from './apiBase.js';
 import { ensureRecruiterUserId, recruiterAuthHeaders } from './recruiterApi.js';
 
 async function parseJson(res) {
@@ -55,6 +55,20 @@ export async function fetchComparison(jobId) {
 export async function fetchSessionResults(sessionId) {
   const base = getApiBaseUrl();
   return parseJson(await fetch(`${base}/api/sessions/${encodeURIComponent(sessionId)}/results`));
+}
+
+/**
+ * HR AI Analyzer — GET `/result/interview/:applicationId` (job_applicants.id).
+ * @see https://hrisaianalyzer-production.up.railway.app
+ */
+export async function fetchExternalInterviewResult(applicationId) {
+  const base = getHrAiAnalyzerBaseUrl();
+  const res = await fetch(`${base}/result/interview/${encodeURIComponent(applicationId)}`);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data?.error || data?.message || `Analyzer request failed (${res.status})`);
+  }
+  return data;
 }
 
 export async function inviteCandidateToJob({ name, email, jobId }) {

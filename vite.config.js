@@ -8,4 +8,15 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  server: {
+    proxy: {
+      // Hindari CORS di dev: fetch ke `/hra/result/...` → HR AI Analyzer
+      '/hra': {
+        target: 'https://hrisaianalyzer-production.up.railway.app',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/hra/, ''),
+      },
+    },
+  },
 })
