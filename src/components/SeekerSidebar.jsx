@@ -1,7 +1,36 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import { getHrAiAnalyzerBaseUrl } from '../lib/apiBase.js';
+import { getMyApplications } from '../lib/seekerApi.js';
+
+function parseTime(value) {
+  const t = Number(new Date(value || 0));
+  return Number.isFinite(t) ? t : 0;
+}
+
+function getLatestApplication(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  const withId = rows.filter((r) => r?.id);
+  if (withId.length === 0) return null;
+  const sorted = [...withId].sort((a, b) => {
+    const ta = parseTime(a?.createdAt) || parseTime(a?.updatedAt);
+    const tb = parseTime(b?.createdAt) || parseTime(b?.updatedAt);
+    return tb - ta;
+  });
+  return sorted[0] || withId[withId.length - 1];
+}
+
+function normalizeApplications(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.applications)) return payload.applications;
+  if (Array.isArray(payload?.data?.applications)) return payload.data.applications;
+  return [];
+}
 
 const SeekerSidebar = () => {
+  const [isPosting, setIsPosting] = useState(false);
+  const [postStatus, setPostStatus] = useState('');
   const navItems = [
     { label: 'Marketplace', icon: 'explore', path: '/seeker/marketplace' },
     { label: 'My Applications', icon: 'dashboard_customize', path: '/seeker/dashboard' },
@@ -9,6 +38,37 @@ const SeekerSidebar = () => {
     { label: 'Match Profile', icon: 'account_circle', path: '/seeker/profile' },
     { label: 'Settings', icon: 'settings', path: '/seeker/settings' },
   ];
+
+  const handleUploadCv = async () => {
+    setIsPosting(true);
+    setPostStatus('');
+    try {
+      const payload = await getMyApplications();
+      const rows = normalizeApplications(payload);
+      const latest = getLatestApplication(rows);
+      if (!latest?.id) {
+        throw new Error('Belum ada application untuk diproses');
+      }
+      const base = getHrAiAnalyzerBaseUrl();
+      const res = await fetch(
+        `${base}/result/recommend-jobs/${encodeURIComponent(String(latest.id))}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ application_id: String(latest.id) }),
+        }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || data?.message || `Request failed (${res.status})`);
+      }
+      setPostStatus(`POST sukses (${latest.id})`);
+    } catch (error) {
+      setPostStatus(error instanceof Error ? error.message : 'POST gagal');
+    } finally {
+      setIsPosting(false);
+    }
+  };
 
   return (
     <aside className="h-screen w-64 fixed left-0 top-0 bg-slate-100 dark:bg-slate-900 flex flex-col gap-2 p-4 transition-all duration-200 ease-in-out border-r border-outline-variant/10">
@@ -39,9 +99,17 @@ const SeekerSidebar = () => {
       </nav>
       <div className="mt-8 p-6 bg-surface-container-low rounded-[2rem] border border-outline-variant/10">
         <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-4">Andi Pratama</p>
-        <button className="w-full signature-gradient text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 active:scale-95 transition-all">
-          Upload CV
+        <button
+          type="button"
+          onClick={handleUploadCv}
+          disabled={isPosting}
+          className="w-full signature-gradient text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {isPosting ? 'Posting...' : 'Upload CV'}
         </button>
+        {postStatus && (
+          <p className="mt-3 text-[10px] font-bold text-on-surface-variant tracking-tight">{postStatus}</p>
+        )}
       </div>
     </aside>
   );
