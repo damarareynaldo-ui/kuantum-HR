@@ -127,3 +127,31 @@ export async function lookupAccessCode(code) {
   }
   return api(`/api/access-codes/lookup?code=${encodeURIComponent(trimmed)}`);
 }
+
+/** Hapus seeker id & email dari penyimpanan lokal (tanpa memanggil API). */
+export function clearSeekerSession() {
+  localStorage.removeItem(SEEKER_ID_KEY);
+  localStorage.removeItem(SEEKER_EMAIL_KEY);
+}
+
+/**
+ * Panggil POST /api/auth/logout lalu hapus seeker id.
+ * Gagal jaringan tetap membersihkan penyimpanan lokal.
+ */
+export async function logoutSeeker() {
+  const base = getApiBaseUrl().replace(/\/$/, '');
+  const userId = localStorage.getItem(SEEKER_ID_KEY);
+  try {
+    await fetch(`${base}/api/auth/logout`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(userId ? { 'X-User-Id': userId } : {}),
+      },
+      body: JSON.stringify({}),
+    });
+  } catch {
+    /* tetap clear */
+  }
+  clearSeekerSession();
+}

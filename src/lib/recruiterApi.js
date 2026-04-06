@@ -83,6 +83,33 @@ export function recruiterAuthHeaders(userId) {
   };
 }
 
+/** Hapus recruiter id dari penyimpanan lokal (tanpa memanggil API). */
+export function clearRecruiterSession() {
+  localStorage.removeItem(RECRUITER_ID_KEY);
+}
+
+/**
+ * Panggil POST /api/auth/logout lalu hapus recruiter id.
+ * Gagal jaringan tetap membersihkan penyimpanan lokal.
+ */
+export async function logoutRecruiter(apiBaseUrl) {
+  const base = apiBaseUrl.replace(/\/$/, "");
+  const id = localStorage.getItem(RECRUITER_ID_KEY);
+  try {
+    await fetch(`${base}/api/auth/logout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(id ? { "X-User-Id": id } : {}),
+      },
+      body: JSON.stringify({}),
+    });
+  } catch {
+    /* tetap clear */
+  }
+  clearRecruiterSession();
+}
+
 export async function createJob(apiBaseUrl, payload) {
   const base = apiBaseUrl.replace(/\/$/, "");
   const userId = await ensureRecruiterUserId(base);

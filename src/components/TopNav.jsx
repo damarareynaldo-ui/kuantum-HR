@@ -1,7 +1,9 @@
 import React from 'react';
-import { useLocation } from 'react-router-dom';
-import { getSeekerProfile } from '../lib/seekerApi.js';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { getApiBaseUrl } from '../lib/apiBase.js';
+import { getSeekerProfile, logoutSeeker } from '../lib/seekerApi.js';
 import { fetchRecruiterProfile } from '../lib/hrApi.js';
+import { logoutRecruiter } from '../lib/recruiterApi.js';
 
 function initialsFromName(name, email) {
   const n = String(name || '').trim();
@@ -23,8 +25,10 @@ function roleLabel(role) {
 
 const TopNav = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const isSeeker = location.pathname.startsWith('/seeker');
   const [profile, setProfile] = React.useState(null);
+  const [loggingOut, setLoggingOut] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -40,6 +44,21 @@ const TopNav = () => {
       cancelled = true;
     };
   }, [isSeeker]);
+
+  async function handleLogout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      if (isSeeker) {
+        await logoutSeeker();
+      } else {
+        await logoutRecruiter(getApiBaseUrl());
+      }
+      navigate('/login', { replace: true });
+    } finally {
+      setLoggingOut(false);
+    }
+  }
 
   const name = profile?.name || profile?.email || 'Account';
   const sub = roleLabel(profile?.role);
@@ -64,6 +83,14 @@ const TopNav = () => {
         </button>
         <button type="button" className="p-2 text-slate-500 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-colors">
           <span className="material-symbols-outlined">settings</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => void handleLogout()}
+          disabled={loggingOut}
+          className="text-xs font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:text-primary px-3 py-2 rounded-xl border border-outline-variant/20 hover:border-primary/30 transition-colors disabled:opacity-50"
+        >
+          {loggingOut ? '…' : 'Log out'}
         </button>
         <div className="flex items-center gap-3 pl-4 border-l border-outline-variant/10">
           <div className="text-right hidden sm:block">
