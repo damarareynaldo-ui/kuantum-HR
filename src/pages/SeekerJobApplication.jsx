@@ -93,6 +93,7 @@ const SeekerJobApplication = () => {
       const allJobs = await fetchPublicJobs();
       const jobsPayload = Array.isArray(allJobs)
         ? allJobs.map((j) => ({
+            jobId: String(j?.id || "").trim(),
             title: String(j?.title || "").trim() || "Role",
             company: String(j?.company_name || "").trim() || "Company",
             industry:
