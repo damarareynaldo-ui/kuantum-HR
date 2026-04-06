@@ -8,6 +8,13 @@ const Candidates = () => {
   const [candidates, setCandidates] = React.useState([]);
   const [error, setError] = React.useState('');
 
+  const resultDetailPath = React.useCallback((row) => {
+    const q = new URLSearchParams();
+    if (row?.applicationId) q.set('applicationId', String(row.applicationId));
+    if (row?.id) q.set('sessionId', String(row.id));
+    return `/results/detail?${q.toString()}`;
+  }, []);
+
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -122,7 +129,7 @@ const Candidates = () => {
               {candidates.map((c, i) => (
                 <tr 
                   key={i}
-                  onClick={() => navigate(`/results/detail?sessionId=${encodeURIComponent(String(c.id))}`)}
+                  onClick={() => navigate(resultDetailPath(c))}
                   className="hover:bg-primary/5 transition-all duration-300 cursor-pointer group"
                 >
                   <td className="px-10 py-8">
@@ -215,7 +222,7 @@ const Candidates = () => {
                 </p>
                 <div className="flex gap-6 flex-wrap">
                   <Link
-                    to={`/results/detail?sessionId=${encodeURIComponent(String(highlight.id))}`}
+                    to={resultDetailPath(highlight)}
                     className="px-8 py-4 bg-tertiary text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-tertiary/30 hover:scale-105 active:scale-95 transition-all"
                   >
                     Open session results

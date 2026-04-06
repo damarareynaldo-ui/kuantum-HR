@@ -267,7 +267,7 @@ const JobApplicantsDetail = () => {
                       ) : (
                         <div className="flex flex-col items-end gap-2">
                           <Link
-                            to={`/results/detail?sessionId=${encodeURIComponent(String(sid))}`}
+                            to={`/results/detail?applicationId=${encodeURIComponent(String(applicant.id))}&sessionId=${encodeURIComponent(String(sid))}`}
                             className="text-primary text-[10px] font-black uppercase tracking-widest hover:underline"
                           >
                             Lihat hasil / transkrip
