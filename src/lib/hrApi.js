@@ -71,6 +71,40 @@ export async function fetchExternalInterviewResult(applicationId) {
   return data;
 }
 
+/**
+ * HR AI Analyzer — POST `/analyze-cv-employer` (multipart).
+ * Fields: applicationId, jobId, jobTitle, jobRequirements, jobIndustry, cvFile
+ */
+export async function postAnalyzeCvEmployer(formData) {
+  const base = getHrAiAnalyzerBaseUrl();
+  const res = await fetch(`${base}/analyze-cv-employer`, {
+    method: 'POST',
+    body: formData,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data?.error || data?.message || `analyze-cv-employer failed (${res.status})`);
+  }
+  return data;
+}
+
+/**
+ * HR AI Analyzer — POST `/recommend-jobs` (multipart).
+ * Typically `jobs` = JSON.stringify([{ title, company, industry, requirements }, ...]).
+ */
+export async function postRecommendJobs(formData) {
+  const base = getHrAiAnalyzerBaseUrl();
+  const res = await fetch(`${base}/recommend-jobs`, {
+    method: 'POST',
+    body: formData,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data?.error || data?.message || `recommend-jobs failed (${res.status})`);
+  }
+  return data;
+}
+
 export async function inviteCandidateToJob({ name, email, jobId }) {
   const base = getApiBaseUrl();
   const login = await parseJson(

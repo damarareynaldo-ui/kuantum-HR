@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import SeekerLayout from '../components/SeekerLayout';
+import { postAnalyzeCvEmployer, postRecommendJobs } from '../lib/hrApi.js';
 import { fetchPublicJob } from '../lib/publicJobsApi.js';
 import { createApplication, getSeekerProfile } from '../lib/seekerApi';
 
@@ -21,6 +22,7 @@ const SeekerJobApplication = () => {
   const [submitting, setSubmitting] = useState(false);
   const [job, setJob] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [cvFile, setCvFile] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,18 +58,72 @@ const SeekerJobApplication = () => {
   const jobTitle = job?.title || 'Role';
   const companyName = job?.company_name || 'Company';
   const requirements = Array.isArray(job?.requirements) ? job.requirements : [];
+  const jobIndustry =
+    job?.company_industry || job?.companyIndustry || profile?.industry_preference || 'General';
+  const jobRequirementsText =
+    requirements.length > 0
+      ? requirements.map((s) => (typeof s === 'string' ? s : String(s))).join('\n')
+      : String(job?.description || '').trim() || '—';
   const displayName = profile?.name || profile?.email || 'Applicant';
   const displayEmail = profile?.email || '';
   const roleHint = profile?.industry_preference || (profile?.role === 'applicant' ? 'Applicant' : '');
 
   const handleSubmit = async () => {
+    if (!cvFile) {
+      alert('Unggah CV (PDF) terlebih dahulu.');
+      return;
+    }
     try {
       setSubmitting(true);
-      await createApplication(String(id));
+      const created = await createApplication(String(id));
+      const applicationId = created?.applicationId;
+      if (!applicationId) {
+        throw new Error('Application created but no applicationId returned');
+      }
+
+      const analyzeFd = new FormData();
+      analyzeFd.append('applicationId', String(applicationId));
+      analyzeFd.append('jobId', String(id));
+      analyzeFd.append('jobTitle', jobTitle);
+      analyzeFd.append('jobRequirements', jobRequirementsText);
+      analyzeFd.append('jobIndustry', jobIndustry);
+      analyzeFd.append('cvFile', cvFile, cvFile.name);
+
+      const recommendFd = new FormData();
+      recommendFd.append(
+        'jobs',
+        JSON.stringify([
+          {
+            title: jobTitle,
+            company: companyName,
+            industry: jobIndustry,
+            requirements: jobRequirementsText,
+          },
+        ])
+      );
+
+      const [analyzeResult, recommendResult] = await Promise.allSettled([
+        postAnalyzeCvEmployer(analyzeFd),
+        postRecommendJobs(recommendFd),
+      ]);
+
+      const aiFailed = [];
+      if (analyzeResult.status === 'rejected') {
+        aiFailed.push('analisis CV');
+        console.error(analyzeResult.reason);
+      }
+      if (recommendResult.status === 'rejected') {
+        aiFailed.push('rekomendasi pekerjaan');
+        console.error(recommendResult.reason);
+      }
+
+      let toast =
+        'Lamaran terkirim. Recruiter dapat mengundang Anda ke wawancara AI setelah ditinjau.';
+      if (aiFailed.length) {
+        toast += ` Layanan AI (${aiFailed.join(', ')}) sementara tidak tersedia; lamaran tetap tercatat.`;
+      }
       navigate('/seeker/dashboard', {
-        state: {
-          toast: 'Lamaran terkirim. Recruiter akan mengundang Anda ke wawancara AI setelah ditinjau.',
-        },
+        state: { toast },
       });
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to submit application');
@@ -189,10 +245,27 @@ const SeekerJobApplication = () => {
 
           <div className="md:col-span-4 space-y-6">
             <div className="bg-surface-container-lowest p-8 rounded-[2rem] border border-outline-variant/10 shadow-sm">
-              <h3 className="text-[10px] font-black text-on-surface mb-6 uppercase tracking-[0.2em] opacity-60">Resume</h3>
-              <p className="text-sm text-on-surface-variant font-medium leading-relaxed">
-                Resume upload is not part of this flow yet. Your account identity ({displayEmail || 'email on file'}) will be attached to the application.
+              <h3 className="text-[10px] font-black text-on-surface mb-6 uppercase tracking-[0.2em] opacity-60">Resume (PDF)</h3>
+              <p className="text-sm text-on-surface-variant font-medium leading-relaxed mb-4">
+                CV dikirim ke analisis AI (Railway) bersama identitas akun Anda ({displayEmail || 'email on file'}).
               </p>
+              <label className="block">
+                <span className="sr-only">Pilih file CV</span>
+                <input
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  className="w-full text-xs font-bold text-on-surface file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-primary file:text-white file:font-black file:uppercase file:tracking-widest cursor-pointer"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    setCvFile(f || null);
+                  }}
+                />
+              </label>
+              {cvFile ? (
+                <p className="mt-3 text-[10px] font-bold text-primary uppercase tracking-wider truncate" title={cvFile.name}>
+                  {cvFile.name}
+                </p>
+              ) : null}
             </div>
 
             <div className="bg-surface-container-highest p-6 rounded-[2rem] border border-outline-variant/10">
