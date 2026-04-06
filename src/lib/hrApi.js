@@ -1,5 +1,5 @@
-import { getApiBaseUrl, getHrAiAnalyzerBaseUrl } from './apiBase.js';
-import { ensureRecruiterUserId, recruiterAuthHeaders } from './recruiterApi.js';
+import { getApiBaseUrl, getHrAiAnalyzerBaseUrl } from "./apiBase.js";
+import { ensureRecruiterUserId, recruiterAuthHeaders } from "./recruiterApi.js";
 
 async function parseJson(res) {
   const data = await res.json().catch(() => ({}));
@@ -25,19 +25,25 @@ export async function fetchCandidates() {
  * @param {{ completedOnly?: boolean, page?: number, pageSize?: number }} opts
  * @returns {Promise<{ items: unknown[], total: number, page: number, pageSize: number, totalPages: number }>}
  */
-export async function fetchInterviewList({ completedOnly = false, page = 1, pageSize = 10 } = {}) {
+export async function fetchInterviewList({
+  completedOnly = false,
+  page = 1,
+  pageSize = 10,
+} = {}) {
   const base = getApiBaseUrl();
   const params = new URLSearchParams();
-  if (completedOnly) params.set('status', 'completed');
-  params.set('page', String(page));
-  params.set('pageSize', String(pageSize));
-  const data = await parseJson(await fetch(`${base}/api/interviews?${params.toString()}`));
+  if (completedOnly) params.set("status", "completed");
+  params.set("page", String(page));
+  params.set("pageSize", String(pageSize));
+  const data = await parseJson(
+    await fetch(`${base}/api/interviews?${params.toString()}`),
+  );
   return {
     items: Array.isArray(data?.items) ? data.items : [],
-    total: typeof data?.total === 'number' ? data.total : 0,
-    page: typeof data?.page === 'number' ? data.page : page,
-    pageSize: typeof data?.pageSize === 'number' ? data.pageSize : pageSize,
-    totalPages: typeof data?.totalPages === 'number' ? data.totalPages : 0,
+    total: typeof data?.total === "number" ? data.total : 0,
+    page: typeof data?.page === "number" ? data.page : page,
+    pageSize: typeof data?.pageSize === "number" ? data.pageSize : pageSize,
+    totalPages: typeof data?.totalPages === "number" ? data.totalPages : 0,
   };
 }
 
@@ -49,12 +55,18 @@ export async function fetchSessions() {
 
 export async function fetchComparison(jobId) {
   const base = getApiBaseUrl();
-  return parseJson(await fetch(`${base}/api/comparison?jobId=${encodeURIComponent(jobId)}`));
+  return parseJson(
+    await fetch(`${base}/api/comparison?jobId=${encodeURIComponent(jobId)}`),
+  );
 }
 
 export async function fetchSessionResults(sessionId) {
   const base = getApiBaseUrl();
-  return parseJson(await fetch(`${base}/api/sessions/${encodeURIComponent(sessionId)}/results`));
+  return parseJson(
+    await fetch(
+      `${base}/api/sessions/${encodeURIComponent(sessionId)}/results`,
+    ),
+  );
 }
 
 /**
@@ -63,10 +75,14 @@ export async function fetchSessionResults(sessionId) {
  */
 export async function fetchExternalInterviewResult(applicationId) {
   const base = getHrAiAnalyzerBaseUrl();
-  const res = await fetch(`${base}/result/interview/${encodeURIComponent(applicationId)}`);
+  const res = await fetch(
+    `${base}/result/interview/${encodeURIComponent(applicationId)}`,
+  );
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(data?.error || data?.message || `Analyzer request failed (${res.status})`);
+    throw new Error(
+      data?.error || data?.message || `Analyzer request failed (${res.status})`,
+    );
   }
   return data;
 }
@@ -77,11 +93,17 @@ export async function fetchExternalInterviewResult(applicationId) {
  */
 export async function fetchCvEmployerResult(applicationId) {
   const base = getHrAiAnalyzerBaseUrl();
-  const res = await fetch(`${base}/result/cv-employer/${encodeURIComponent(applicationId)}`);
+  const res = await fetch(
+    `${base}/result/cv-employer/${encodeURIComponent(applicationId)}`,
+  );
   const data = await res.json().catch(() => ({}));
   if (res.status === 404) return null;
   if (!res.ok) {
-    throw new Error(data?.error || data?.message || `CV employer result failed (${res.status})`);
+    throw new Error(
+      data?.error ||
+        data?.message ||
+        `CV employer result failed (${res.status})`,
+    );
   }
   return data;
 }
@@ -93,12 +115,16 @@ export async function fetchCvEmployerResult(applicationId) {
 export async function postAnalyzeCvEmployer(formData) {
   const base = getHrAiAnalyzerBaseUrl();
   const res = await fetch(`${base}/analyze-cv-employer`, {
-    method: 'POST',
+    method: "POST",
     body: formData,
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(data?.error || data?.message || `analyze-cv-employer failed (${res.status})`);
+    throw new Error(
+      data?.error ||
+        data?.message ||
+        `analyze-cv-employer failed (${res.status})`,
+    );
   }
   return data;
 }
@@ -107,15 +133,21 @@ export async function postAnalyzeCvEmployer(formData) {
  * HR AI Analyzer — GET `/result/recommend-jobs/:applicationId`.
  */
 export async function fetchRecommendJobsResult(applicationId) {
-  const id = String(applicationId || '').trim();
+  const id = String(applicationId || "").trim();
   if (!id) {
-    throw new Error('Application id is required');
+    throw new Error("Application id is required");
   }
   const base = getHrAiAnalyzerBaseUrl();
-  const res = await fetch(`${base}/result/recommend-jobs/${encodeURIComponent(id)}`);
+  const res = await fetch(
+    `${base}/result/recommend-jobs/${encodeURIComponent(id)}`,
+  );
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(data?.error || data?.message || `recommend-jobs result failed (${res.status})`);
+    throw new Error(
+      data?.error ||
+        data?.message ||
+        `recommend-jobs result failed (${res.status})`,
+    );
   }
   return data;
 }
@@ -124,34 +156,34 @@ export async function inviteCandidateToJob({ name, email, jobId }) {
   const base = getApiBaseUrl();
   const login = await parseJson(
     await fetch(`${base}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, email }),
-    })
+    }),
   );
   const applicantId = login?.token;
-  if (!applicantId) throw new Error('Failed to resolve applicant id');
+  if (!applicantId) throw new Error("Failed to resolve applicant id");
 
   await parseJson(
     await fetch(`${base}/api/users/me`, {
-      method: 'PATCH',
+      method: "PATCH",
       headers: {
-        'Content-Type': 'application/json',
-        'X-User-Id': applicantId,
+        "Content-Type": "application/json",
+        "X-User-Id": applicantId,
       },
-      body: JSON.stringify({ role: 'applicant' }),
-    })
+      body: JSON.stringify({ role: "applicant" }),
+    }),
   );
 
   const app = await parseJson(
     await fetch(`${base}/api/applications`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'X-User-Id': applicantId,
+        "Content-Type": "application/json",
+        "X-User-Id": applicantId,
       },
       body: JSON.stringify({ jobId }),
-    })
+    }),
   );
 
   // Ensure recruiter context is warmed for subsequent protected endpoints.
@@ -165,7 +197,7 @@ export async function fetchJobApplicants(jobId) {
   const data = await parseJson(
     await fetch(`${base}/api/jobs/${encodeURIComponent(jobId)}/applications`, {
       headers: recruiterAuthHeaders(recruiterId),
-    })
+    }),
   );
   return Array.isArray(data) ? data : [];
 }
@@ -176,6 +208,6 @@ export async function fetchRecruiterProfile() {
   return parseJson(
     await fetch(`${base}/api/users/me`, {
       headers: recruiterAuthHeaders(recruiterId),
-    })
+    }),
   );
 }
