@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import SeekerLayout from '../components/SeekerLayout';
 import { fetchPublicJobs } from '../lib/publicJobsApi.js';
-import { fetchJobRecommendations, getMyApplications } from '../lib/seekerApi.js';
+import { fetchHrAnalyzerRecommendJobsDirect, getMyApplications } from '../lib/seekerApi.js';
 
 const CAROUSEL_META = [
   { color: 'from-primary to-[#0038a8]', icon: 'bolt' },
@@ -64,6 +64,14 @@ function getLatestApplication(rows) {
   return sorted[0] || withId[withId.length - 1];
 }
 
+function normalizeApplications(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.applications)) return payload.applications;
+  if (Array.isArray(payload?.data?.applications)) return payload.data.applications;
+  return [];
+}
+
 const JobMarketplace = () => {
   const scrollRef = useRef(null);
   const cardRefs = useRef([]);
@@ -100,7 +108,8 @@ const JobMarketplace = () => {
     (async () => {
       setAiRecLoading(true);
       try {
-        const rows = await getMyApplications();
+        const payload = await getMyApplications();
+        const rows = normalizeApplications(payload);
         const latest = getLatestApplication(rows);
 
         if (!latest?.id) {
@@ -108,8 +117,8 @@ const JobMarketplace = () => {
           return;
         }
 
-        const payload = await fetchJobRecommendations(String(latest.id));
-        const list = payload?.data?.recommendations || payload?.recommendations;
+        const recPayload = await fetchHrAnalyzerRecommendJobsDirect(String(latest.id));
+        const list = recPayload?.data?.recommendations || recPayload?.recommendations;
         if (!cancelled && Array.isArray(list) && list.length > 0) {
           setAnalyzerRecs(list);
         } else if (!cancelled) {
