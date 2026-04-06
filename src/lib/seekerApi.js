@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from './apiBase.js';
+import { getApiBaseUrl, getHrAiAnalyzerBaseUrl } from './apiBase.js';
 
 const API_BASE_URL = getApiBaseUrl();
 const SEEKER_ID_KEY = 'kuantum.seeker.userId';
@@ -102,6 +102,24 @@ export async function fetchJobRecommendations(applicationId, opts = {}) {
   return api(path, {
     headers: { 'X-User-Id': userId },
   });
+}
+
+/**
+ * GET `{HR_AI}/result/recommend-jobs/:analyzerApplicationId` — langsung ke HR AI Analyzer (Railway),
+ * bentuk body sama dengan proxy kuantum-api (`data.recommendations[]`).
+ */
+export async function fetchHrAnalyzerRecommendJobsDirect(analyzerApplicationId) {
+  const id = String(analyzerApplicationId || '').trim();
+  if (!id) {
+    throw new Error('Analyzer application id is required');
+  }
+  const base = getHrAiAnalyzerBaseUrl();
+  const res = await fetch(`${base}/result/recommend-jobs/${encodeURIComponent(id)}`);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data?.error || data?.message || `Request failed (${res.status})`);
+  }
+  return data;
 }
 
 /** GET /api/applications/:id/active-session — sesi aktif (invited/in_progress) + URL eksternal / kode */

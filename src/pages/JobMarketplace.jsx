@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import SeekerLayout from '../components/SeekerLayout';
 import { fetchPublicJobs } from '../lib/publicJobsApi.js';
-import { getMyApplications, fetchJobRecommendations } from '../lib/seekerApi.js';
+import { fetchHrAnalyzerRecommendJobsDirect } from '../lib/seekerApi.js';
 
 const CAROUSEL_META = [
   { color: 'from-primary to-[#0038a8]', icon: 'bolt' },
@@ -103,22 +103,10 @@ const JobMarketplace = () => {
     (async () => {
       setAiRecLoading(true);
       try {
-        const envAppId = import.meta.env.VITE_JOB_RECOMMENDATIONS_APPLICATION_ID;
-        const apps = await getMyApplications();
-        const applicationId =
-          (typeof envAppId === 'string' && envAppId.trim()) || (Array.isArray(apps) && apps[0]?.id);
-        if (!applicationId) {
-          if (!cancelled) {
-            setAnalyzerRecs(null);
-            setAiRecLoading(false);
-          }
-          return;
-        }
-        const externalId = import.meta.env.VITE_HR_ANALYZER_EXTERNAL_APP_ID;
-        const payload = await fetchJobRecommendations(applicationId, {
-          hrApplicationId:
-            typeof externalId === 'string' && externalId.trim() ? externalId.trim() : undefined,
-        });
+        const envId = import.meta.env.VITE_HR_ANALYZER_EXTERNAL_APP_ID;
+        const analyzerApplicationId =
+          (typeof envId === 'string' && envId.trim()) || 'APP-SEEKER-001';
+        const payload = await fetchHrAnalyzerRecommendJobsDirect(analyzerApplicationId);
         const list = payload?.data?.recommendations;
         if (!cancelled && Array.isArray(list) && list.length > 0) {
           setAnalyzerRecs(list);
