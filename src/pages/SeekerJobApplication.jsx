@@ -8,6 +8,23 @@ import {
 import { fetchPublicJob, fetchPublicJobs } from "../lib/publicJobsApi.js";
 import { createApplication, getSeekerProfile } from "../lib/seekerApi";
 
+function resolveJobId(job, idx = 0) {
+  const directId = String(job?.id ?? job?.jobId ?? job?.job_id ?? "").trim();
+  if (directId) return directId;
+
+  const title = String(job?.title || "").trim().toLowerCase();
+  const company = String(job?.company_name || job?.company || "")
+    .trim()
+    .toLowerCase();
+  if (!title && !company) return `job-${idx + 1}`;
+
+  // Keep a deterministic fallback id when upstream payload does not include any id.
+  const safe = `${title}-${company}`
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return safe || `job-${idx + 1}`;
+}
+
 function initials(name, email) {
   const n = String(name || "").trim();
   if (n) {
@@ -92,8 +109,8 @@ const SeekerJobApplication = () => {
       }
       const allJobs = await fetchPublicJobs();
       const jobsPayload = Array.isArray(allJobs)
-        ? allJobs.map((j) => ({
-            jobId: String(j?.id || "").trim(),
+        ? allJobs.map((j, idx) => ({
+            jobId: resolveJobId(j, idx),
             title: String(j?.title || "").trim() || "Role",
             company: String(j?.company_name || "").trim() || "Company",
             industry:
