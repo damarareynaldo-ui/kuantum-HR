@@ -38,6 +38,7 @@ function mapExternalAnalyzerPayload(raw) {
     competencies.length > 0
       ? competencies.reduce((a, c) => a + Number(c.val || 0), 0) / competencies.length
       : null;
+  const transcript = Array.isArray(raw?.transcript) ? raw.transcript : [];
 
   return {
     source: 'external',
@@ -47,7 +48,7 @@ function mapExternalAnalyzerPayload(raw) {
     candidate: { name: '', email: '' },
     job: { title: 'Interview analysis' },
     company: null,
-    transcript: null,
+    transcript,
     summary: d.executive_summary || '',
     competencies,
     keyMoments: strengths,
@@ -57,6 +58,18 @@ function mapExternalAnalyzerPayload(raw) {
     overallScore: avg != null ? Math.round(avg * 10) : null,
     analysis: null,
   };
+}
+
+function formatClock(ts) {
+  if (!Number.isFinite(Number(ts))) return '';
+  try {
+    return new Date(Number(ts)).toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return '';
+  }
 }
 
 const InterviewResults = () => {
@@ -97,6 +110,22 @@ const InterviewResults = () => {
 
   const transcript = React.useMemo(() => {
     if (!result?.transcript) return [];
+    if (Array.isArray(result.transcript)) {
+      return result.transcript
+        .map((item) => {
+          const isUser = String(item?.role || '').toLowerCase() === 'user';
+          const isAssistant = String(item?.role || '').toLowerCase() === 'assistant';
+          if (!isUser && !isAssistant) return null;
+          return {
+            role: isUser ? 'Candidate' : 'AI',
+            name: isUser ? result?.candidate?.name || 'Candidate' : 'Kuantum Interviewer',
+            time: formatClock(item?.createdAt),
+            text: String(item?.text || '').trim(),
+            user: isUser,
+          };
+        })
+        .filter((x) => x && x.text);
+    }
     return String(result.transcript)
       .split('\n')
       .filter(Boolean)

@@ -9,14 +9,6 @@ async function parseJson(res) {
   return data;
 }
 
-function getExternalInterviewBaseUrl() {
-  const fromEnv = import.meta.env.VITE_EXTERNAL_INTERVIEW_BASE_URL;
-  if (typeof fromEnv === 'string' && fromEnv.trim()) {
-    return fromEnv.trim().replace(/\/$/, '');
-  }
-  return getHrAiAnalyzerBaseUrl();
-}
-
 export async function fetchDashboard() {
   const base = getApiBaseUrl();
   return parseJson(await fetch(`${base}/api/dashboard`));
@@ -70,7 +62,7 @@ export async function fetchSessionResults(sessionId) {
  * @see https://hrisaianalyzer-production.up.railway.app
  */
 export async function fetchExternalInterviewResult(applicationId) {
-  const base = getExternalInterviewBaseUrl();
+  const base = getHrAiAnalyzerBaseUrl();
   const res = await fetch(`${base}/result/interview/${encodeURIComponent(applicationId)}`);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -84,7 +76,7 @@ export async function fetchExternalInterviewResult(applicationId) {
  * Returns `null` when no CV analysis exists (404).
  */
 export async function fetchCvEmployerResult(applicationId) {
-  const base = getExternalInterviewBaseUrl();
+  const base = getHrAiAnalyzerBaseUrl();
   const res = await fetch(`${base}/result/cv-employer/${encodeURIComponent(applicationId)}`);
   const data = await res.json().catch(() => ({}));
   if (res.status === 404) return null;
