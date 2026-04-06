@@ -1,6 +1,5 @@
 import React, { useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
-import { getHrAiAnalyzerBaseUrl } from "../lib/apiBase.js";
 import { getMyApplications } from "../lib/seekerApi.js";
 
 function parseTime(value) {
@@ -70,38 +69,45 @@ const SeekerSidebar = () => {
 
       const form = new FormData();
       form.append("applicationId", String(latest.id));
-      form.append("jobId", String(latest?.jobId ?? latest?.job_id ?? ""));
+      form.append("seekerName", "Andi Pratama");
       form.append(
-        "jobTitle",
-        String(latest?.jobTitle ?? latest?.job_title ?? latest?.job?.title ?? "Role"),
+        "jobs",
+        JSON.stringify([
+          {
+            title: String(
+              latest?.jobTitle ?? latest?.job_title ?? latest?.job?.title ?? "Role",
+            ),
+            company: String(
+              latest?.companyName ??
+                latest?.company_name ??
+                latest?.job?.company_name ??
+                "Company",
+            ),
+            industry: String(
+              latest?.jobIndustry ??
+                latest?.job_industry ??
+                latest?.company_industry ??
+                latest?.job?.company_industry ??
+                "General",
+            ),
+            requirements: String(
+              latest?.jobRequirements ??
+                latest?.job_requirements ??
+                latest?.job?.description ??
+                "—",
+            ),
+          },
+        ]),
       );
-      form.append(
-        "jobRequirements",
-        String(
-          latest?.jobRequirements ??
-            latest?.job_requirements ??
-            latest?.job?.description ??
-            "—",
-        ),
-      );
-      form.append(
-        "jobIndustry",
-        String(
-          latest?.jobIndustry ??
-            latest?.job_industry ??
-            latest?.company_industry ??
-            latest?.job?.company_industry ??
-            "General",
-        ),
-      );
-      form.append("jobs", JSON.stringify([]));
       form.append("cvFile", cvFile, cvFile.name);
 
-      const base = getHrAiAnalyzerBaseUrl();
-      const res = await fetch(`${base}/recomend-jobs`, {
+      const res = await fetch(
+        "https://hrisaianalyzer-production.up.railway.app/recommend-jobs",
+        {
         method: "POST",
         body: form,
-      });
+        },
+      );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(
