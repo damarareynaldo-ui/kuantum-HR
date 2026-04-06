@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import SeekerLayout from '../components/SeekerLayout';
 import { fetchPublicJobs } from '../lib/publicJobsApi.js';
-import { fetchHrAnalyzerRecommendJobsDirect } from '../lib/seekerApi.js';
+import { fetchJobRecommendations, getMyApplications } from '../lib/seekerApi.js';
 
 const CAROUSEL_META = [
   { color: 'from-primary to-[#0038a8]', icon: 'bolt' },
@@ -103,11 +103,23 @@ const JobMarketplace = () => {
     (async () => {
       setAiRecLoading(true);
       try {
-        const envId = import.meta.env.VITE_HR_ANALYZER_EXTERNAL_APP_ID;
-        const analyzerApplicationId =
-          (typeof envId === 'string' && envId.trim()) || 'APP-SEEKER-001';
-        const payload = await fetchHrAnalyzerRecommendJobsDirect(analyzerApplicationId);
-        const list = payload?.data?.recommendations;
+        const rows = await getMyApplications();
+        const apps = Array.isArray(rows) ? rows : [];
+        const latest = apps
+          .filter((a) => a?.id)
+          .sort((a, b) => {
+            const at = Number(new Date(a?.createdAt || 0));
+            const bt = Number(new Date(b?.createdAt || 0));
+            return bt - at;
+          })[0];
+
+        if (!latest?.id) {
+          if (!cancelled) setAnalyzerRecs(null);
+          return;
+        }
+
+        const payload = await fetchJobRecommendations(String(latest.id));
+        const list = payload?.data?.recommendations || payload?.recommendations;
         if (!cancelled && Array.isArray(list) && list.length > 0) {
           setAnalyzerRecs(list);
         } else if (!cancelled) {
