@@ -67,6 +67,25 @@ function mapAnalyzerRecommendationToCarousel(rec, idx, publicJobs) {
   };
 }
 
+function parseTime(value) {
+  const t = Number(new Date(value || 0));
+  return Number.isFinite(t) ? t : 0;
+}
+
+function getLatestApplication(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  const withId = rows.filter((r) => r?.id);
+  if (withId.length === 0) return null;
+
+  // Prefer highest createdAt/updatedAt; fallback to last array item.
+  const sorted = [...withId].sort((a, b) => {
+    const ta = parseTime(a?.createdAt) || parseTime(a?.updatedAt);
+    const tb = parseTime(b?.createdAt) || parseTime(b?.updatedAt);
+    return tb - ta;
+  });
+  return sorted[0] || withId[withId.length - 1];
+}
+
 const JobMarketplace = () => {
   const scrollRef = useRef(null);
   const cardRefs = useRef([]);
@@ -104,14 +123,7 @@ const JobMarketplace = () => {
       setAiRecLoading(true);
       try {
         const rows = await getMyApplications();
-        const apps = Array.isArray(rows) ? rows : [];
-        const latest = apps
-          .filter((a) => a?.id)
-          .sort((a, b) => {
-            const at = Number(new Date(a?.createdAt || 0));
-            const bt = Number(new Date(b?.createdAt || 0));
-            return bt - at;
-          })[0];
+        const latest = getLatestApplication(rows);
 
         if (!latest?.id) {
           if (!cancelled) setAnalyzerRecs(null);
