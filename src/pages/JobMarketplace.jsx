@@ -11,28 +11,6 @@ const CAROUSEL_META = [
   { color: 'from-[#4CC9F0] to-[#4895EF]', icon: 'architecture' },
 ];
 
-function decorateCarouselRow(job, idx) {
-  const meta = CAROUSEL_META[idx % CAROUSEL_META.length];
-  return {
-    id: job.id,
-    title: job.title || 'Role',
-    company: job.company_name || 'Company',
-    department: job.department || '—',
-    employmentType: job.employment_type || '—',
-    matchReason:
-      job.description?.trim() ||
-      `Details for ${job.title || 'this role'} at ${job.company_name || 'the team'}.`,
-    featured: idx === 0,
-    color: meta.color,
-    icon: meta.icon,
-    insightLabel: job.title || 'Role',
-    insightText:
-      job.description?.trim() ||
-      'Explore this opening and apply to start your interview journey.',
-    navigateJobId: job.id,
-  };
-}
-
 /** HR AI `data.recommendations[]` → carousel row (match ke listing publik jika ada). */
 function mapAnalyzerRecommendationToCarousel(rec, idx, publicJobs) {
   const meta = CAROUSEL_META[idx % CAROUSEL_META.length];
@@ -152,7 +130,7 @@ const JobMarketplace = () => {
     if (Array.isArray(analyzerRecs) && analyzerRecs.length > 0) {
       return analyzerRecs.map((rec, idx) => mapAnalyzerRecommendationToCarousel(rec, idx, jobs));
     }
-    return jobs.slice(0, 4).map(decorateCarouselRow);
+    return [];
   }, [jobs, analyzerRecs]);
   const recentJobs = useMemo(
     () =>
