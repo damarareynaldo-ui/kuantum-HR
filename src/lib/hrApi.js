@@ -104,18 +104,18 @@ export async function postAnalyzeCvEmployer(formData) {
 }
 
 /**
- * HR AI Analyzer — POST `/recommend-jobs` (multipart).
- * Typically `jobs` = JSON.stringify([{ title, company, industry, requirements }, ...]).
+ * HR AI Analyzer — GET `/result/recommend-jobs/:applicationId`.
  */
-export async function postRecommendJobs(formData) {
+export async function fetchRecommendJobsResult(applicationId) {
+  const id = String(applicationId || '').trim();
+  if (!id) {
+    throw new Error('Application id is required');
+  }
   const base = getHrAiAnalyzerBaseUrl();
-  const res = await fetch(`${base}/recommend-jobs`, {
-    method: 'POST',
-    body: formData,
-  });
+  const res = await fetch(`${base}/result/recommend-jobs/${encodeURIComponent(id)}`);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(data?.error || data?.message || `recommend-jobs failed (${res.status})`);
+    throw new Error(data?.error || data?.message || `recommend-jobs result failed (${res.status})`);
   }
   return data;
 }

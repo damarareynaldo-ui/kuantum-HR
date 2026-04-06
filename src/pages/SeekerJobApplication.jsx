@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import SeekerLayout from '../components/SeekerLayout';
-import { postAnalyzeCvEmployer, postRecommendJobs } from '../lib/hrApi.js';
+import { postAnalyzeCvEmployer, fetchRecommendJobsResult } from '../lib/hrApi.js';
 import { fetchPublicJob } from '../lib/publicJobsApi.js';
 import { createApplication, getSeekerProfile } from '../lib/seekerApi';
 
@@ -89,22 +89,9 @@ const SeekerJobApplication = () => {
       analyzeFd.append('jobIndustry', jobIndustry);
       analyzeFd.append('cvFile', cvFile, cvFile.name);
 
-      const recommendFd = new FormData();
-      recommendFd.append(
-        'jobs',
-        JSON.stringify([
-          {
-            title: jobTitle,
-            company: companyName,
-            industry: jobIndustry,
-            requirements: jobRequirementsText,
-          },
-        ])
-      );
-
       const [analyzeResult, recommendResult] = await Promise.allSettled([
         postAnalyzeCvEmployer(analyzeFd),
-        postRecommendJobs(recommendFd),
+        fetchRecommendJobsResult(applicationId),
       ]);
 
       const aiFailed = [];
